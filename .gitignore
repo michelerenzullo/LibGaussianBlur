@@ -1,0 +1,16 @@
+**/*.a
+**/*.o
+build
+.vscode
+tests/add_test.cpp
+bootstrap
+examples/wasm/pthread/gaussianblur_worker.js
+examples/wasm/pthread/gaussianblur.html
+examples/wasm/pthread/GaussianBlur.js
+examples/wasm/pthread/GaussianBlur.wasm
+examples/wasm/pthread/GaussianBlur.worker.js
+examples/wasm/gaussianblur.html
+examples/wasm/gaussianblur.js
+examples/wasm/gaussianblur.wasm
+examples/wasm/gaussianblur_worker.js
+.DS_STORE
