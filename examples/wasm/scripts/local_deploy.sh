@@ -44,7 +44,7 @@ main() {
 
     config_template="$root_path/examples/wasm/scripts/local-lighttpd-template.conf"
     config_file="$root_path/examples/wasm/scripts/local-lighttpd-config.conf"
-    build_dir="$root_path/examples/wasm"
+    build_dir="$root_path/external/wasm/wasm32/bin"
 
     # Escapes forward slashes and spaces for sed, might need
     # adjusting if anyone has paths with more funky characters

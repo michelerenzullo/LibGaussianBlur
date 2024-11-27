@@ -4,6 +4,8 @@
 #include <thread>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <cmath>
 extern "C"
 { 
 	#include "pffft_pommier/pffft.h"

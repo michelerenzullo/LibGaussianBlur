@@ -4,10 +4,12 @@ cmake_minimum_required(VERSION 3.14)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 
-set(MYLOOP OFF CACHE BOOL "Multi-threaded")
+set(ENABLE_MULTITHREADING OFF CACHE BOOL "Multi-threaded")
 
 # WASM
 option(WASM "Compile to WebAssembly" OFF)
+# Examples
+option(WITH_EXAMPLES "Include examples" ON)
 
 # If compiling to WebAssembly
 if(WASM)
@@ -26,8 +28,8 @@ if(WASM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msimd128")
 endif()
 
-if(MYLOOP)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMYLOOP -pthread")
+if(ENABLE_MULTITHREADING)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_MULTITHREADING -pthread")
 endif()
 
 if(APPLE AND NOT WASM)
@@ -48,46 +50,46 @@ else()
 endif()
 
 # Set properties for the library
-set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME GaussianBlur)
+set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME "Gaussianblur")
 
-if(WASM)
-add_executable(GaussianBlur "examples/wasm/main.cpp")
-else()
-add_executable(GaussianBlur "examples/desktop/main.cpp")
-endif()
-target_link_libraries(GaussianBlur GaussianBlurLib)
+if(WITH_EXAMPLES)
+    if(WASM)
+        add_executable(GaussianBlur "examples/wasm/main.cpp")
+        set(WASM_COMMON_LINK_OPTIONS 
+            "SHELL: --closure 1"
+            "-sALLOW_MEMORY_GROWTH=1"
+            "-sMAXIMUM_MEMORY=4GB"
+            "-sINITIAL_MEMORY=314572800"
+            "-O3"
+            "--bind"
+            "-sWASM_BIGINT"
+            "-sEXPORTED_FUNCTIONS=['_malloc']"
+            "-msimd128"
+        )
 
-if(WASM)
-set(WASM_COMMON_LINK_OPTIONS 
-    "SHELL: --closure 1"
-    "-sALLOW_MEMORY_GROWTH=1"
-    "-sMAXIMUM_MEMORY=4GB"
-    "-sINITIAL_MEMORY=314572800"
-    "-O3"
-    "--bind"
-    "-sWASM_BIGINT"
-    "-sEXPORTED_FUNCTIONS=['_malloc']"
-    "-msimd128"
-)
+        # Append specific options based on SINGLE or ENABLE_MULTITHREADING
+        if(ENABLE_MULTITHREADING)
+            list(APPEND WASM_COMMON_LINK_OPTIONS 
+                "-pthread"
+                "-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency"
+            )
+        endif()
 
-# Append specific options based on SINGLE or MYLOOP
-if(MYLOOP)
-    list(APPEND WASM_COMMON_LINK_OPTIONS 
-        "-pthread"
-        "-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency"
+        # Apply the options to the target
+        target_link_options(GaussianBlur PRIVATE ${WASM_COMMON_LINK_OPTIONS})
+
+        # Install the WASM file
+        install(FILES "${CMAKE_BINARY_DIR}/GaussianBlur.wasm" DESTINATION bin)
+    else()
+        add_executable(GaussianBlur "examples/desktop/main.cpp")
+    endif()
+
+    target_link_libraries(GaussianBlur GaussianBlurLib)
+    install(TARGETS GaussianBlur
+        BUNDLE DESTINATION Applications
+        RUNTIME DESTINATION bin
     )
 endif()
 
-# Apply the options to the target
-target_link_options(GaussianBlur PRIVATE ${WASM_COMMON_LINK_OPTIONS})
-
-# Install the WASM file
-install(FILES "${CMAKE_BINARY_DIR}/GaussianBlur.wasm" DESTINATION bin)
-endif()
-
 install(TARGETS GaussianBlurLib ARCHIVE DESTINATION lib)
-install(TARGETS GaussianBlur
-    BUNDLE DESTINATION Applications
-    RUNTIME DESTINATION bin
-)
-install(DIRECTORY include/ DESTINATION include/gaussian_blur FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
+install(DIRECTORY include/gaussianblur/ DESTINATION include/gaussianblur FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
