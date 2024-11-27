@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" crossorigin>
+  <title>WebAssembly FFT GaussianBlur</title>
+  <style>
+    .spinner {
+      height: 30px;
+      width: 30px;
+      margin: 0;
+      margin-top: 20px;
+      margin-left: 20px;
+
+      vertical-align: top;
+
+      -webkit-animation: rotation .8s linear infinite;
+      -moz-animation: rotation .8s linear infinite;
+      -o-animation: rotation .8s linear infinite;
+      animation: rotation 0.8s linear infinite;
+
+      border-left: 5px solid rgb(235, 235, 235);
+      border-right: 5px solid rgb(235, 235, 235);
+      border-bottom: 5px solid rgb(235, 235, 235);
+      border-top: 5px solid rgb(120, 120, 120);
+
+      border-radius: 100%;
+      background-color: rgb(46, 192, 215);
+    }
+
+    @-webkit-keyframes rotation {
+      from {
+        -webkit-transform: rotate(0deg);
+      }
+
+      to {
+        -webkit-transform: rotate(360deg);
+      }
+    }
+
+    @-moz-keyframes rotation {
+      from {
+        -moz-transform: rotate(0deg);
+      }
+
+      to {
+        -moz-transform: rotate(360deg);
+      }
+    }
+
+    @-o-keyframes rotation {
+      from {
+        -o-transform: rotate(0deg);
+      }
+
+      to {
+        -o-transform: rotate(360deg);
+      }
+    }
+
+    @keyframes rotation {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h3>WebAssembly example of libGaussianBlur - Michele Renzullo</h3>
+  <br>
+  <label for="samples">Samples: </label>
+  <select name="samples" id="samples">
+    <option></option>
+    <option value="0">dog</option>
+    <option value="1">building</option>
+    <option value="2">guy</option>
+    <option value="3">house</option>
+    <option value="4">castle</option>
+    <option value="5">tree</option>
+  </select>
+
+  <input type="file" id="input_file" hidden />
+  <div>
+    <div id="drop_zone" class="p-1">
+      <canvas id="output_" class="border rounded"></canvas>
+      <img id="preview" />
+      <p id="exif" style="display:inline-block;vertical-align:top;"></p>
+    </div>
+  </div>
+  <label for="arguments">options: </label>
+  <input type="text" id="options" size="24" value="-s 5 -a">
+  <input type="button" id='convert' value="run" />
+  <input type="button" id="save_file" value="save file" hidden />
+  <br>
+  <input type="range" id="sigma_slider" min="0" max="100" value="5" step="0.1">
+  <input type="button" id="help_btn" value="help" />
+  <div class="spinner" id='spinner' hidden></div>
+  <div>
+    <p>
+      <br>
+      Features:<br>
+      - Thumbnail extraction<br>
+      - Thumbnail jpeg preview<br>
+      - Exif<br>
+      - Worker thread<br>
+      - Added ACEScg, ACEScc, ACEScct<br>
+      - For ACES color space - EXR file output like <a href="https://github.com/AcademySoftwareFoundation/rawtoaces">rawtoaces</a><br>
+      - Fast I/O Buffer from/to JS/WASM<br>
+      - Jpeg preview for tiff output - turbojpeg C++<br>
+      - Thread safe<br>
+      - Easy JS&lt--&gtC++ memory management: internally managed inside C++<br>
+    </p>
+  </div>
+  <br>
+  <div id="help" hidden>
+    <p>
+    <pre>options:
+    -a        Blur also the alpha channel if present
+    -s float  Sigma of the gaussian blur</pre>
+    </p>
+  </div>
+
+</body>
+
+<script type='text/javascript'>
+  (function() {
+  // Check if cross-origin isolation is enabled
+  if (crossOriginIsolated) {
+    console.log("crossOriginIsolated");
+
+    // Check for SharedArrayBuffer and Atomics support
+    console.log(`SharedArrayBuffer ${typeof SharedArrayBuffer === 'undefined' ? "not supported" : "supported"}`);
+    console.log(`Atomics ${typeof Atomics === 'undefined' ? "not supported" : "supported"}`);
+    
+  } else {
+    console.log("not crossOriginIsolated");
+  }})();
+  const myworker = new Worker("gaussianblur_worker.js")
+  const $ = id => document.getElementById(id)
+
+  const set_images = async () => {
+
+    let link_sample = "images/"
+    switch (samples.value | 0) {
+      case 0:
+        link_sample += "DSC09749.ARW"
+        break
+      case 1:
+        link_sample += "IMG_4340.ARW"
+        break
+      case 2:
+        link_sample += "IMG_4340.CR2"
+        break
+      case 3:
+        link_sample += "IMG_434.CR2"
+        break
+      case 4:
+        link_sample += "RAW_SONY_A330.ARW"
+        break
+      case 5:
+        link_sample += "SDIM0346.DNG"
+        break
+    }
+
+    const response = await fetch(link_sample)
+    const data = await response.blob()
+    const file = new File([data], link_sample.substr(10))
+    const list = new DataTransfer()
+    list.items.add(file)
+    input_file.files = list.files
+    //execute()
+  }
+
+
+  const canvas_text = txt => {
+    output_.getContext("2d").clearRect(0, 0, output_.width, output_.height)
+    output_.getContext("2d").font = "15px Georgia"
+    output_.getContext("2d").textAlign = "center"
+    output_.getContext("2d").fillText(txt, Math.round(output_.width / 2), Math.round(output_.height / 2))
+    preview.hidden = true;
+    output_.hidden = false;
+  }
+
+  canvas_text("Drag and drop or click to select image")
+
+  const loadImage = url => {
+    return new Promise(resolve => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.src = url
+    })
+  }
+
+  const loadFile = file => {
+    return new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(new Uint8Array(reader.result))
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  var output_file, output_name, input_file_array, fileExtension
+  /* benchmark disabled
+  var i = 0
+  var time = 0 */
+  const execute = async () => {
+    save_file.hidden = true
+
+    if (!input_file.files[0]) return
+    if (input_file.files[0].type && !input_file.files[0].type.includes('image/')) {
+      exif.innerHTML = ""
+      canvas_text("Input isn't an image, retry")
+      return
+    }
+
+    spinner.hidden = false
+    convert.disabled = true
+
+    input_file_array = await loadFile(input_file.files[0])
+    fileExtension = input_file.files[0].name.split('.').pop().toLowerCase()
+    const optionsWithExtension = options.value + " -e " + fileExtension
+    const t0 = performance.now();
+    myworker.postMessage([input_file_array, optionsWithExtension])
+
+    myworker.onmessage = e => {
+      convert.disabled = false
+
+      const result = e.data[0]
+
+      switch (fileExtension) {
+        case "jpg":
+          renderImage(result.file_output, "image/jpeg");
+          break
+        case "png":
+          renderImage(result.file_output, "image/png");
+          break
+        case "tiff":
+          renderImage(result.preview);
+          break
+        default:
+          exif.innerHTML = ""
+          canvas_text("Input isn't a valid raw file, retry")
+      }
+      //console.log("time from running till jpeg preview", performance.now() - t0, "ms")
+
+      spinner.hidden = true;
+
+
+      if (result.file_output) {
+        output_file = new Blob([result.file_output], { type: "octet/stream" })
+        const timestamp = new Date().toISOString().replace(/[:.-]/g, "_");
+        output_name = input_file.files[0].name.substr(0, input_file.files[0].name.lastIndexOf(".")) + "_" + timestamp + "." + fileExtension
+        save_file.hidden = false
+      }
+      /* benchmark disabled
+      if (i < 10) {
+
+        time += e.data[1]
+        //console.log("i " + i + " time " + time)
+        i += 1
+        //execute()
+      }
+      else console.log(((time + e.data[1]) / (i + 1))) */
+    }
+  }
+
+  sigma_slider.addEventListener('input', () => updateSigmaAndRun(), true);
+
+  const updateSigmaAndRun = () => {
+  const sigma = sigma_slider.value;
+  if (options.value.includes("-s")) {
+    options.value = options.value.replace(/-s \d+(\.\d+)?/, `-s ${sigma}`);
+  } else {
+    options.value += ` -s ${sigma}`;
+  }
+
+  if (sigma == 0) {
+    switch (fileExtension) {
+      case "jpg":
+      case "jpeg":
+        renderImage(input_file_array, "image/jpeg");
+        break
+      case "png":
+        renderImage(input_file_array, "image/png");
+        break
+      default:
+        exif.innerHTML = ""
+        canvas_text("Input has to be either jpeg or png, retry")
+    }
+  }
+  execute();
+};
+
+
+  const renderImage = async (data, mimeType = "image/jpeg") => {
+    const img = await loadImage(URL.createObjectURL(new Blob([data], { type: mimeType })));
+
+    let scale = Math.min(1200 / img.width, 1200 / img.height);
+    if (scale > 1) scale = 1;
+    preview.src = img.src;
+    preview.width = Math.round(img.width * scale);
+    preview.height = Math.round(img.height * scale);
+    output_.hidden = true;
+    preview.hidden = false;
+  }
+
+  const dropHandler = e => {
+    e.preventDefault()
+    input_file.files = e.dataTransfer.files
+    execute()
+  }
+
+  const save = () => {
+    if (window.navigator.msSaveOrOpenBlob) window.navigator.msSaveBlob(output_file, output_name);
+    else {
+      const elem = window.document.createElement('a');
+      elem.href = window.URL.createObjectURL(output_file);
+      elem.download = output_name;
+      document.body.appendChild(elem);
+      elem.click();
+      document.body.removeChild(elem);
+    }
+  }
+
+  input_file.addEventListener('change', () => execute(), true)
+  drop_zone.addEventListener('dragover', event => event.preventDefault(), true)
+  drop_zone.addEventListener('drop', event => dropHandler(event), true)
+  output_.addEventListener('click', () => input_file.click(), true)
+  preview.addEventListener('click', () => input_file.click(), true)
+  convert.addEventListener('click', () => execute(), true)
+  samples.addEventListener('change', () => set_images(), true)
+  save_file.addEventListener('click', () => save(), true)
+  help_btn.addEventListener('click', () => help.hidden = !help.hidden, true)
+  sigma_slider.addEventListener('input', () => updateSigmaAndRun(), true)
+
+</script>
+
+</html>

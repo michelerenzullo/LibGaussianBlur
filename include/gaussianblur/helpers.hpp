@@ -4,6 +4,8 @@
 #include <thread>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <cmath>
 extern "C"
 { 
 	#include "pffft_pommier/pffft.h"
@@ -139,7 +141,7 @@ void hybrid_loop(T end, op operation)
 		if constexpr (std::is_invocable_v<op, T>) operation(i);
 		else operation(i, tid);
 	};
-#if defined __EMSCRIPTEN_THREADS__ || defined MYLOOP
+#if defined(__EMSCRIPTEN_THREADS__) || defined(ENABLE_MULTITHREADING)
 	const int num_threads = std::thread::hardware_concurrency();
 
 	// Split in block equally for each thread. ex: 3 threads, start = 0, end = 8

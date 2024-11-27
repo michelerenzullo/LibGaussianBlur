@@ -44,16 +44,20 @@ std::optional<std::vector<uint8_t>> read_image(const std::string& file, int& col
 	return {std::vector<uint8_t>(image_data.get(), image_data.get() + cols * rows * channels)};
 }
 
-void print_cpp_version() {
-    if (__cplusplus == 202002L) printf("C++20\n");
-    else if (__cplusplus == 201703L) printf("C++17\n");
-    else if (__cplusplus == 201402L) printf("C++14\n");
-    else if (__cplusplus == 201103L) printf("C++11\n");
-    else if (__cplusplus == 199711L) printf("C++98\n");
-    else printf("pre-standard C++\n");
+void print_help() {
+    std::cout << "Usage: gaussianblur <smoothing_factor> <input_file> [alpha]\n";
+    std::cout << "  <smoothing_factor> : The smoothing factor for the Gaussian blur (must be > 0).\n";
+    std::cout << "  <input_file>       : The input image file.\n";
+    std::cout << "  [alpha]            : Optional. If set to 1, the convolution is done on the 4th channel (alpha channel).\n";
+    std::cout << "                       If not provided or set to 0, the convolution is done on the first 3 channels only.\n";
 }
+
 int main(int argc, char* argv[]) {
-	print_cpp_version();
+	 // Check for help argument
+    if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
+        print_help();
+        return 0;
+    }
 	// If the image has the alpha channel, the convolution is done on the 4th channel if alpha is true, otherwise on the first 3 channels only
 	bool alpha = false;
 	if (argc == 4) alpha = std::stoi(argv[3]) == 1;
