@@ -81,8 +81,8 @@ em_val run(uintptr_t args_ptr, uintptr_t target_ptr, size_t target_size)
   em_val file_copy = em_val::null();
   std::string extension = "png";
 
-  bool alpha = false;
-  float nsmooth = 0.0f;
+  bool apply_to_alpha = false;
+  float sigma = 0.0f;
 
 #ifdef TIMING
   auto start = chrono::steady_clock::now(); // benchmark disabled
@@ -101,10 +101,10 @@ em_val run(uintptr_t args_ptr, uintptr_t target_ptr, size_t target_size)
     switch (arg[0])
     {
     case 'a':
-      alpha = true;
+      apply_to_alpha = true;
       break;
     case 's':
-      nsmooth = (float)atof(arg.c_str() + 1);
+      sigma = (float)atof(arg.c_str() + 1);
       break;
     case 'e':
       extension = arg.substr(1);
@@ -117,15 +117,14 @@ em_val run(uintptr_t args_ptr, uintptr_t target_ptr, size_t target_size)
     }
   }
 
-    if (nsmooth > 0)
+    if (sigma > 0)
 	{
-
 	    int cols, rows, channels;
 	    std::optional<std::vector<uint8_t>> image_data;
 	    if ((image_data = read_image(std::move(target), target_size, cols, rows, channels)).has_value()) {
 	        Image image = {std::move(image_data.value()), ImgGeom{rows, cols, channels}};
     
-          gaussianblur::gaussianblur(image, nsmooth, alpha);
+          gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
 
 	        auto img_in_mem = write_image_to_memory(image, extension);
 

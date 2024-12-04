@@ -45,10 +45,10 @@ std::optional<std::vector<uint8_t>> read_image(const std::string& file, int& col
 }
 
 void print_help() {
-    std::cout << "Usage: gaussianblur <smoothing_factor> <input_file> [alpha]\n";
+    std::cout << "Usage: gaussianblur <smoothing_factor> <input_file> [apply_to_alpha]\n";
     std::cout << "  <smoothing_factor> : The smoothing factor for the Gaussian blur (must be > 0).\n";
     std::cout << "  <input_file>       : The input image file.\n";
-    std::cout << "  [alpha]            : Optional. If set to 1, the convolution is done on the 4th channel (alpha channel).\n";
+    std::cout << "  [apply_to_alpha]            : Optional. If set to 1, the convolution is done on the 4th channel (alpha channel).\n";
     std::cout << "                       If not provided or set to 0, the convolution is done on the first 3 channels only.\n";
 }
 
@@ -59,11 +59,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 	// If the image has the alpha channel, the convolution is done on the 4th channel if alpha is true, otherwise on the first 3 channels only
-	bool alpha = false;
-	if (argc == 4) alpha = std::stoi(argv[3]) == 1;
+	bool apply_to_alpha = false;
+	if (argc == 4) apply_to_alpha = std::stoi(argv[3]) == 1;
 	std::string file_name(argv[2]);
-	float nsmooth = std::stof(argv[1]);
-	if (nsmooth <= 0)
+	float sigma = std::stof(argv[1]);
+	if (sigma <= 0)
 	{
 		printf("Invalid smoothing factor\n");
 		return 1;
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 	if (!(image_data = read_image(file_name, cols, rows, channels)).has_value()) return 1;
 	Image image = {std::move(image_data.value()), ImgGeom{rows, cols, channels}};
     
-    gaussianblur::gaussianblur(image, nsmooth, alpha);
+    gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
 
 	write_image(file_name, image);
 	

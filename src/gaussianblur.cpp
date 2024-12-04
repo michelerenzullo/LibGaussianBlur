@@ -86,9 +86,8 @@ int nearestTransformSize(int N) {
 	return N;
 }
 
-KernelDFT prepare_kernel_DFT(const ImgGeom image_geometry, const float nsmooth) {
+KernelDFT prepare_kernel_DFT(const ImgGeom image_geometry, const float sigma) {
 	std::chrono::time_point<std::chrono::steady_clock> start_0 = std::chrono::steady_clock::now();
-	float sigma = nsmooth;
 	// calculate a good width of the kernel for our sigma 
 	int kSize = gaussian_window(sigma, std::max(image_geometry.rows, image_geometry.cols));
 
@@ -155,7 +154,7 @@ KernelDFT prepare_kernel_DFT(const ImgGeom image_geometry, const float nsmooth) 
 
 }
 
-std::optional<DeinterleavedChs> prepare_work_array(Image& image) {
+std::optional<DeinterleavedChs> deinterleave_image_channels(Image& image) {
 	DeinterleavedChs deinterleaved_vector;
 	
 	int img_size_per_channel = image.geom.rows * image.geom.cols;
@@ -189,7 +188,7 @@ void process_channel_tiles(
 	AlignedVector<float> &tile,
 	AlignedVector<float> &work,
 	AlignedVector<float> &resf,
-	DeinterleavedChs& temp,
+	DeinterleavedChs& deinterleaved_channels,
 	float scaler) {
 		tmp.resize(kernel.size());
 		tile.resize(kernel.size());
@@ -199,11 +198,11 @@ void process_channel_tiles(
 
 			// copy the tile and pad by reflection in the aligned vector
 			// left reflected pad
-			std::copy_n(std::reverse_iterator(temp.at(channel).data() + j * tile_size + pad + 1), pad, tile_local.begin());
+			std::copy_n(std::reverse_iterator(deinterleaved_channels.at(channel).data() + j * tile_size + pad + 1), pad, tile_local.begin());
 			// middle
-			std::copy_n(temp.at(channel).data() + j * tile_size, tile_size, tile_local.begin() + pad);
+			std::copy_n(deinterleaved_channels.at(channel).data() + j * tile_size, tile_size, tile_local.begin() + pad);
 			// right reflected pad
-			std::copy_n(std::reverse_iterator(temp.at(channel).data() + (j + 1) * tile_size - 1), pad, tile_local.end() - pad /* fft trailing 0s --> */ - trailing_zeros);
+			std::copy_n(std::reverse_iterator(deinterleaved_channels.at(channel).data() + (j + 1) * tile_size - 1), pad, tile_local.end() - pad /* fft trailing 0s --> */ - trailing_zeros);
 
 			pffft_transform_ordered(setup, tile_local.data(), work_local.data(), tmp_local.data(), PFFFT_FORWARD);
 			pffft_sorted_optimized_convolution(work_local, kernel, scaler);
@@ -214,50 +213,10 @@ void process_channel_tiles(
 		});
 
 	    // transpose cache-friendly, took from FastBoxBlur
-		flip_block<1>(resf.data(), temp.at(channel).data(), tile_size, tiles);
+		flip_block<1>(resf.data(), deinterleaved_channels.at(channel).data(), tile_size, tiles);
 }
 
-void gaussianblur(Image& image, const float nsmooth, const bool alpha) {
-    // If the image has the alpha channel, the convolution is done on the 4th channel if alpha is true, otherwise on the first 3 channels only
-
-	if (nsmooth <= 0)
-	{
-		printf("Invalid smoothing factor\n");
-		return;
-	}
-	std::optional<DeinterleavedChs> temp;
-    if (!(temp = prepare_work_array(image)).has_value()) return;
-
-    KernelDFT kernelDFT = prepare_kernel_DFT(image.geom, nsmooth);
-	pffft(image.geom, std::move(kernelDFT), temp.value(), alpha);
-
-	copy_work_array(image, std::move(temp.value()));
-
-}
-
-
-void copy_work_array(Image& image, const DeinterleavedChs temp)
-{
-	if (image.geom.channels == 3) {
-		std::array<const float*, 3> BGR = {
-			temp.at(0).data(),
-			temp.at(1).data(),
-			temp.at(2).data()
-		};
-		interleave_channels<3>(BGR.data(), image.data.data(), image.geom.rows * image.geom.cols);
-	}
-	else if (image.geom.channels == 4) {
-		std::array<const float*, 4> BGRA = {
-			temp.at(0).data(),
-			temp.at(1).data(),
-			temp.at(2).data(),
-			temp.at(3).data()
-		};
-		interleave_channels<4>(BGRA.data(), image.data.data(), image.geom.rows * image.geom.cols);
-	}
-}
-
-void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT, DeinterleavedChs& temp, bool alpha)
+void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT, DeinterleavedChs& deinterleaved_channels, bool apply_to_alpha)
 {
 	std::chrono::time_point<std::chrono::steady_clock> start_1 = std::chrono::steady_clock::now();
 	const int maxsize = std::max(kernelDFT.kerf_1D_row.size(), kernelDFT.kerf_1D_col.size());
@@ -268,7 +227,7 @@ void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT, Deinterleave
 	tmp.reserve(maxsize);
 
     int ch_to_process = 3;
-    if (image_geometry.channels == 4 && alpha) ch_to_process = 4;
+    if (image_geometry.channels == 4 && apply_to_alpha) ch_to_process = 4;
 
 	for (int i = 0; i < ch_to_process ; ++i) {
 		AlignedVector<float> resf(image_geometry.rows * image_geometry.cols);
@@ -289,27 +248,64 @@ void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT, Deinterleave
 			tile,
 			work,
 			resf,
-			temp,
+			deinterleaved_channels,
 			divisor_col
 		);
 
         // Process the convolution col per col and transpose the result
 		process_channel_tiles(
 			i,
-		    image_geometry.cols,
-		    image_geometry.rows,
-		    kernelDFT.pad,
-		    kernelDFT.trailing_zeros.rows,
-	     	kernelDFT.rows_setup.get(),
-		    kernelDFT.kerf_1D_row,
-	     	tmp,
-		    tile,
-		    work,
-		    resf,
-		    temp,
-	     	divisor_row
+			image_geometry.cols,
+			image_geometry.rows,
+			kernelDFT.pad,
+			kernelDFT.trailing_zeros.rows,
+			kernelDFT.rows_setup.get(),
+			kernelDFT.kerf_1D_row,
+			tmp,
+			tile,
+			work,
+			resf,
+			deinterleaved_channels,
+			divisor_row
 		);
 	}
 	printf("Convolution done in %f ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_1).count());
+}
+
+void copy_processed_data_to_image(Image& image, const DeinterleavedChs deinterleaved_channels)
+{
+	if (image.geom.channels == 3) {
+		std::array<const float*, 3> BGR = {
+			deinterleaved_channels.at(0).data(),
+			deinterleaved_channels.at(1).data(),
+			deinterleaved_channels.at(2).data()
+		};
+		interleave_channels<3>(BGR.data(), image.data.data(), image.geom.rows * image.geom.cols);
+	}
+	else if (image.geom.channels == 4) {
+		std::array<const float*, 4> BGRA = {
+			deinterleaved_channels.at(0).data(),
+			deinterleaved_channels.at(1).data(),
+			deinterleaved_channels.at(2).data(),
+			deinterleaved_channels.at(3).data()
+		};
+		interleave_channels<4>(BGRA.data(), image.data.data(), image.geom.rows * image.geom.cols);
+	}
+}
+
+void gaussianblur(Image& image, const float sigma, const bool apply_to_alpha) {
+    // If the image has the alpha channel, the convolution is done on the 4th channel if alpha is true, otherwise on the first 3 channels only
+	if (sigma <= 0)
+	{
+		printf("Invalid smoothing factor\n");
+		return;
+	}
+	std::optional<DeinterleavedChs> deinterleaved_channels;
+    if (!(deinterleaved_channels = deinterleave_image_channels(image)).has_value()) return;
+
+    KernelDFT kernelDFT = prepare_kernel_DFT(image.geom, sigma);
+	pffft(image.geom, std::move(kernelDFT), deinterleaved_channels.value(), apply_to_alpha);
+
+	copy_processed_data_to_image(image, std::move(deinterleaved_channels.value()));
 }
 } // namespace gaussianblur
