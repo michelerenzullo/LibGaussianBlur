@@ -1,0 +1,3 @@
+[submodule "include/pffft_pommier"]
+	path = include/pffft_pommier
+	url = git@github.com:michelerenzullo/pffft_pommier.git
