@@ -1,0 +1,14 @@
+**/*.a
+**/*.o
+build
+.vscode
+tests/add_test.cpp
+.DS_STORE
+.deps/
+external/macos
+external/wasm
+external/linux
+external/android
+external/ios
+.docker/
+.github/
