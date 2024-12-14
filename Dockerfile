@@ -17,29 +17,28 @@ RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
     for f in /usr/lib/llvm-16/bin/*; do ln -sf "$f" /usr/bin; done && \
     rm -rf /var/lib/apt/lists/*
 
+FROM base AS builder-env
 WORKDIR /app
 # Copy gaussianblur git submodule (without .git subfolder, ignored in .dockerignore)
 COPY .deps/gaussian_blur .deps/gaussian_blur
 # Bootstrap must be top-level and find gaussian_blur in .deps. Proably need to change this.
 RUN ln -s /app/.deps/gaussian_blur/bootstrap /app/bootstrap
 
-FROM base AS build
+FROM builder-env AS linux
 # Build gaussian_blur
 RUN bootstrap/bootstrap.sh linux && rm -rf build
+RUN ln -s /app/external/linux/x86_64/bin/GaussianBlurTests /app/GaussianBlurTests
 
-FROM build AS test
-ENTRYPOINT [ "external/linux/x86_64/bin/GaussianBlurTests" ]
-
-FROM base AS android
+FROM builder-env AS android
 # Install OpenJDK 21
-COPY .docker/openjdk-21.0.2_linux-x64_bin.tar.gz /opt/
-RUN mkdir -p /usr/lib/jvm && \
-    tar -xzf /opt/openjdk-21.0.2_linux-x64_bin.tar.gz -C /usr/lib/jvm && \
-    rm /opt/openjdk-21.0.2_linux-x64_bin.tar.gz && \
-    ln -s /usr/lib/jvm/jdk-21.0.2/bin/* /usr/bin/
+COPY .docker/openjdk.tar.gz /opt/
+RUN mkdir -p /usr/lib/jvm/jdk && \
+    tar -xzf /opt/openjdk.tar.gz --strip-components=1 -C /usr/lib/jvm/jdk && \
+    rm /opt/openjdk.tar.gz && \
+    ln -s /usr/lib/jvm/jdk/bin/* /usr/bin/
 
 # Set JAVA_HOME environment variable
-ENV JAVA_HOME=/usr/lib/jvm/jdk-21.0.2
+ENV JAVA_HOME=/usr/lib/jvm/jdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Install Android tools
@@ -63,7 +62,7 @@ RUN yes | sdkmanager  --licenses
 RUN bootstrap/bootstrap.sh android && rm -rf build
 
 
-FROM base AS wasm
+FROM builder-env AS wasm
 # Install Emscripten
 COPY .docker/emsdk.zip /opt/
 # Extract emsdk and create in symlink in /root (aka $HOME)
