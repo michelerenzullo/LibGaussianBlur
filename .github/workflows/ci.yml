@@ -1,0 +1,238 @@
+name: Docker Build(s), Test and Push(es)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - .github/workflows/ci.yml
+      - 'Dockerfile'
+      - 'scripts/prepare-docker-base-dependencies.sh'
+      - 'scripts/prepare-docker-wasm-dependencies.sh'
+      - 'scripts/prepare-docker-android-dependencies.sh'
+      - 'bootstrap/**'
+  pull_request:
+    paths:
+      - .github/workflows/ci.yml
+      - 'Dockerfile'
+      - 'scripts/prepare-docker-base-dependencies.sh'
+      - 'scripts/prepare-docker-wasm-dependencies.sh'
+      - 'scripts/prepare-docker-android-dependencies.sh'
+      - 'bootstrap/**'
+jobs:
+  builder-env:
+    name: Build and Push `builder-env` Stage
+    runs-on: ubuntu-24.04
+
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
+      BUILD_TARGET: builder-env
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD}}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Set up Docker CLI
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: (try to)Restore cached docker-base-dependencies
+        id: cache-docker-base-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .deps
+          key: ${{ runner.os }}-docker-base-dependencies-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
+
+      - name: Prepare Docker base dependencies if cache miss
+        if: steps.cache-docker-base-dependencies-restore.outputs.cache-hit != 'true'
+        run: ./scripts/prepare-docker-base-dependencies.sh
+
+      - name: Save docker base dependencies if cache miss
+        if: steps.cache-docker-base-dependencies-restore.outputs.cache-hit != 'true'
+        id: cache-docker-base-dependencies-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps
+          key: ${{ steps.cache-docker-base-dependencies-restore.outputs.cache-primary-key }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.BUILD_TARGET }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+
+  linux:
+    name: Build and Push `linux` Stage
+    runs-on: ubuntu-24.04
+    needs: [builder-env]
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
+      BUILD_TARGET: linux
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD}}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Set up Docker CLI
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore cached docker-base-dependencies
+        id: cache-docker-base-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .deps
+          key: ${{ runner.os }}-docker-base-dependencies-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
+
+
+      - name: Build and push Docker image (linux)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.BUILD_TARGET }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-24.04
+    needs: [linux]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Run tests
+        run: |
+          docker run --rm ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:linux ./GaussianBlurTests
+
+
+  android:
+    name: Build `android` Target
+    runs-on: ubuntu-24.04
+    needs: [test]
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
+      BUILD_TARGET: android
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD}}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Set up Docker CLI
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore cached docker-base-dependencies
+        id: cache-docker-base-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .deps
+          key: ${{ runner.os }}-docker-base-dependencies-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
+
+      - name: (try to)Restore cached docker-android-dependencies
+        id: cache-docker-android-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .docker
+          key: ${{ runner.os }}-docker-android-dependencies-${{ hashFiles('scripts/prepare-docker-android-dependencies.sh') }}
+
+      - name: Prepare Docker android dependencies if cache miss
+        if: steps.cache-docker-android-dependencies-restore.outputs.cache-hit != 'true'
+        run: ./scripts/prepare-docker-android-dependencies.sh
+
+      - name: Save docker android dependencies if cache miss
+        if: steps.cache-docker-android-dependencies-restore.outputs.cache-hit != 'true'
+        id: cache-docker-android-dependencies-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .docker
+          key: ${{ steps.cache-docker-android-dependencies-restore.outputs.cache-primary-key }}
+
+      - name: Build and push Docker image (android)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.BUILD_TARGET }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+
+  wasm:
+    name: Build `wasm` Target
+    runs-on: ubuntu-24.04
+    needs: [test]
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
+      BUILD_TARGET: wasm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD}}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Set up Docker CLI
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore cached docker-base-dependencies
+        id: cache-docker-base-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .deps
+          key: ${{ runner.os }}-docker-base-dependencies-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
+
+      - name: (try to)Restore cached docker-wasm-dependencies
+        id: cache-docker-wasm-dependencies-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .docker
+          key: ${{ runner.os }}-docker-wasm-dependencies-${{ hashFiles('scripts/prepare-docker-wasm-dependencies.sh') }}
+
+      - name: Prepare Docker wasm dependencies if cache miss
+        if: steps.cache-docker-wasm-dependencies-restore.outputs.cache-hit != 'true'
+        run: ./scripts/prepare-docker-wasm-dependencies.sh
+
+      - name: Save docker wasm dependencies if cache miss
+        if: steps.cache-docker-wasm-dependencies-restore.outputs.cache-hit != 'true'
+        id: cache-docker-wasm-dependencies-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .docker
+          key: ${{ steps.cache-docker-wasm-dependencies-restore.outputs.cache-primary-key }}
+
+      - name: Build and push Docker image (wasm)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.BUILD_TARGET }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}

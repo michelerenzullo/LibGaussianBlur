@@ -5,7 +5,7 @@
 
 PREFIX="gaussian_blur"
 TEMP_EXTERNAL_BUILD_DIR=.deps
-GAUSSIANBLUR_VERSION="1.0.0"
+GAUSSIANBLUR_VERSION="1.0.1"
 GAUSSIANBLUR_FOLDER="v${GAUSSIANBLUR_VERSION}"
 GAUSSIANBLUR_BUILD_DIR="${PREFIX}-${GAUSSIANBLUR_FOLDER}"
 
@@ -16,7 +16,7 @@ download_gaussian_blur_source() {
     fi
     # If we are in a docker container skip because the source code has been already copied in the image.
     if ! is_docker_container; then
-        git clone -c advice.detachedHead=false --depth 1 --branch $GAUSSIANBLUR_VERSION git@github.com:michelerenzullo/LibGaussianBlur.git $PREFIX
+        git clone -c advice.detachedHead=false --depth 1 --branch $GAUSSIANBLUR_VERSION https://github.com/michelerenzullo/LibGaussianBlur.git $PREFIX
         git -C $PREFIX submodule update --init --recursive
     fi
     cp -R $PREFIX $GAUSSIANBLUR_BUILD_DIR
@@ -27,7 +27,7 @@ download_gaussian_blur_source() {
 #2: ABI
 compile_gaussian_blur() {
     PLATFORM=$1
-    # Default ABI for iOS is always arm64, while wasm is always wasm32
+    # Default ABI for iOS is always arm64, while wasm is always wasm32.
     if [ "$PLATFORM" = "ios" ]; then ABI="arm64"; else ABI=$2; fi
     if [ "$PLATFORM" = "wasm" ]; then ABI="wasm32"; else ABI=$2; fi
     TEMP_PREFIX_DIR=$(git_root)/build/temporary/$PLATFORM/$ABI
