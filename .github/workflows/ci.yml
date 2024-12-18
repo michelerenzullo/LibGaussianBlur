@@ -127,6 +127,7 @@ jobs:
     name: Build `android` Target
     runs-on: ubuntu-24.04
     needs: [test]
+    if: false # Disable android build for now
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
@@ -236,3 +237,17 @@ jobs:
           cache-to: type=gha,mode=max
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+
+      - name: Extract ${{ env.BUILD_TARGET }} artifacts
+        run: |
+          docker create --name ${{ env.BUILD_TARGET }}-container ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+          docker cp ${{ env.BUILD_TARGET }}-container:/app/external/${{ env.BUILD_TARGET }} ./${{ env.BUILD_TARGET }}
+          docker rm ${{ env.BUILD_TARGET }}-container
+
+      - name: Upload ${{ env.BUILD_TARGET }} artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_TARGET }}-artifacts-${{ github.sha }}
+          path: .
+          compression-level: 9
+  
