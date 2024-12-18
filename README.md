@@ -208,13 +208,7 @@ brew install ggrep
 ```
 
 ### Roadmap
-1. CI/CD Pipeline:
-   - Set up a CI/CD pipeline using GitHub Actions to automate the build and test process.
-   - The pipeline will:
-     1. Build the Docker image and compile the library.
-     2. Run the tests inside the Docker container.
-     3. If tests succeed, proceed to build artifacts for Android and WebAssembly.
-   - This ensures that the library is thoroughly tested before building for other platforms.
+1. Implement test coverage report
 2. Flutter plugin with native bindings
 
 ### Contributing

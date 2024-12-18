@@ -58,7 +58,7 @@ compile_gaussian_blur() {
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=OFF \
             -DANDROID_STL="c++_shared" ..
-        printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
+        printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time \n"
         nice cmake --build . --config Release -j $N_CPU_CORES
         cmake --install . --config Release
 
