@@ -110,6 +110,12 @@ Shifting and centering
 
 ## Installation
 
+### Download already built library
+
+The current CI/CD pipeline automatically uploads the artifacts upon completion. You can download these artifacts from the "Actions" page by navigating to the latest workflow run and scrolling to the bottom of the page. 
+
+See below in the [Artifact Management](#artifact-management) section for more details.
+
 ### Building the Library
 
 #### Using the Bootstrap Script
@@ -207,18 +213,44 @@ If executing the bootstrap from a macOS machine, ensure GNU Grep is available, a
 brew install ggrep
 ```
 
-### Roadmap
-1. Implement test coverage report
-2. Flutter plugin with native bindings
+## CI/CD Integration
+LibGaussianBlur implements a robust Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions to ensure reliable and efficient development workflows. The pipeline is designed with the following features:
 
-### Contributing
+### Multi-Platform Build
+- The CI/CD pipeline supports automated builds for multiple platforms:
+- Linux
+- Android
+- WebAssembly (WASM)
+
+### Artifact Management
+- Artifacts generated during builds are compressed and stored:
+  - Each workflow run produces downloadable build artifacts like binaries, shared / static library based on the environment.
+  - Artifacts are retained for up to 90 days, available under the “Artifacts” section on the bottom page of the corresponding GitHub workflow run.
+
+
+### Caching Strategies
+- The pipeline uses advanced caching strategies to speed up build times:
+  - Both Docker base dependencies and platform-specific dependencies are cached across workflow runs and stored in GitHub.
+  - Cache mechanisms prevent redundant builds by restoring previously computed layers as long as the SHA of relevant files for the layer is unchanged.
+  - A mechanism is in place to manage GitHub’s cache storage limits, releasing cache of older runs, not useful anymore.
+
+### Testing
+- The pipeline is configured to:
+  - Build and run the test suite on the Linux target.
+  - Tests must pass successfully before proceeding to the Android and WASM build stages.
+
+## Roadmap
+- Add test coverage report
+- Flutter plugin with native bindings
+
+## Contributing
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
 
 
-### License
+## License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-### Acknowledgements
+## Acknowledgements
 
 - [stb_image](https://github.com/nothings/stb) for image loading and writing in the examples
 
