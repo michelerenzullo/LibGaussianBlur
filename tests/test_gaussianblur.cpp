@@ -122,11 +122,9 @@ TEST(GaussianBlurTest, BasicTestRGBAWithoutAlpha) {
     }
 }
 
-// Stress test for Gaussian blur with a large image
+// Stress test for Gaussian blur with a large image. Skip if coverage is enabled.
+#ifndef WITH_COVERAGE
 TEST(GaussianBlurTest, StressTest) {
-    // Check if the test should be skipped during coverage analysis
-    if (std::getenv("COVERAGE_ANALYSIS"))
-        GTEST_SKIP() << "Skipping stress test during coverage analysis.";
 
     // Create a large image (e.g., 10240x10240 RGBA) with random data
     const int width = 10240;
@@ -165,6 +163,7 @@ TEST(GaussianBlurTest, StressTest) {
     // Check that the function completes (no specific assertions needed for stress test)
     SUCCEED();
 }
+#endif
 
 // Test case for Gaussian blur with applying to alpha channel
 TEST(GaussianBlurTest, BasicTestRGBAWithAlpha) {

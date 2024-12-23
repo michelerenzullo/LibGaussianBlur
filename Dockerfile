@@ -3,9 +3,7 @@ FROM debian:bookworm-slim AS base
 # Install dependencies
 RUN apt-get -qq update; \
     apt-get install -qqy --no-install-recommends \
-        gnupg2 wget ca-certificates apt-transport-https curl unzip make cmake \
-        clang-16 clang-tidy-16 clang-format-16 lld-16 xz-utils
-
+        gnupg2 wget ca-certificates apt-transport-https curl unzip make cmake xz-utils
 
 # Install LLVM
 RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
@@ -13,9 +11,14 @@ RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
     wget -qO /etc/apt/trusted.gpg.d/llvm.asc \
         https://apt.llvm.org/llvm-snapshot.gpg.key && \
     apt-get -qq update && \
-    apt-get install -qqy -t llvm-toolchain-bookworm-16 clang-16 clang-tidy-16 clang-format-16 lld-16 && \
+    apt-get install -qqy -t llvm-toolchain-bookworm-16 clang-16 clang-tidy-16 clang-format-16 libclang-rt-16-dev lld-16 lcov && \
     for f in /usr/lib/llvm-16/bin/*; do ln -sf "$f" /usr/bin; done && \
     rm -rf /var/lib/apt/lists/*
+
+# Use llvm-cov gcov as replacement for gcc gcov
+# Note that we override the existing gcov, and likely gcc based gcov
+# usage. We only use clang for now, so this does not affect us.
+COPY ./scripts/.llvm-cov-wrapper /usr/bin/gcov
 
 FROM base AS builder-env
 WORKDIR /app
@@ -28,6 +31,13 @@ FROM builder-env AS linux
 # Build gaussian_blur
 RUN bootstrap/bootstrap.sh linux && rm -rf build
 RUN ln -s /app/external/linux/x86_64/bin/GaussianBlurTests /app/GaussianBlurTests
+
+FROM builder-env AS coverage
+RUN mkdir -p /app/.deps/gaussian_blur/build
+RUN cmake -S /app/.deps/gaussian_blur -B /app/.deps/gaussian_blur/build -DWITH_COVERAGE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+RUN cmake --build /app/.deps/gaussian_blur/build -j 8
+RUN cd /app/.deps/gaussian_blur && ./scripts/coverage-report.sh
+RUN mv /app/.deps/gaussian_blur/coverage /app/coverage
 
 FROM builder-env AS android
 # Install OpenJDK 21

@@ -4,15 +4,30 @@ cmake_minimum_required(VERSION 3.14)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 
-set(ENABLE_MULTITHREADING OFF CACHE BOOL "Multi-threaded")
-
+# Multithreading
+option(ENABLE_MULTITHREADING "Enable multithreading support" OFF)
 # WASM
 option(WASM "Compile to WebAssembly" OFF)
 # Examples
-option(WITH_EXAMPLES "Include examples" ON)
+option(WITH_EXAMPLES "Include examples" OFF)
+# Tests
+option(WITH_TESTS "Include tests" OFF)
+# Coverage
+option(WITH_COVERAGE "Include coverage" OFF)
+
+if(WITH_COVERAGE AND WITH_EXAMPLES)
+    message(FATAL_ERROR "Coverage can affect the performance of the examples. Pick one or the other.")
+endif()
+
+# Ensure WITH_TESTS is enabled if WITH_COVERAGE is enabled
+if(WITH_COVERAGE)
+    message(STATUS "Including coverage")
+    set(WITH_TESTS ON CACHE BOOL "Include tests" FORCE)
+endif()
 
 # If compiling to WebAssembly
 if(WASM)
+    message(STATUS "Compiling to WebAssembly")
     if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         set(CMAKE_TOOLCHAIN_FILE "$ENV{HOME}/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake")
     endif()
@@ -20,8 +35,16 @@ if(WASM)
 endif()
 
 # Set common compiler flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+if(WITH_COVERAGE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g3 -coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -coverage -g3 -O0 -fprofile-arcs -ftest-coverage")
+    add_compile_definitions(WITH_COVERAGE)
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
+endif()
 
 # Append additional flags for WebAssembly
 if(WASM)
@@ -32,10 +55,9 @@ if(ENABLE_MULTITHREADING)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_MULTITHREADING -pthread")
 endif()
 
+# Add Framework Accelerate for macOS (SIMD)
 if(APPLE AND NOT WASM)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -framework Accelerate")
-else()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Accelerate")
 endif()
 
 # Project name
@@ -53,6 +75,7 @@ endif()
 set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME "Gaussianblur")
 
 if(WITH_EXAMPLES)
+    message(STATUS "Building examples")
     if(WASM)
         add_executable(GaussianBlur "examples/wasm/main.cpp")
         set(WASM_COMMON_LINK_OPTIONS 
@@ -96,6 +119,7 @@ install(DIRECTORY include/gaussianblur/ DESTINATION include/gaussianblur FILES_M
 
 # Add Google Test
 if(WITH_TESTS)
+    message(STATUS "Building google tests")
     enable_testing()
     set(BUILD_GMOCK OFF)
 

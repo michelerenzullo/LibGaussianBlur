@@ -5,7 +5,7 @@
 
 PREFIX="gaussian_blur"
 TEMP_EXTERNAL_BUILD_DIR=.deps
-GAUSSIANBLUR_VERSION="1.0.1"
+GAUSSIANBLUR_VERSION="1.0.2"
 GAUSSIANBLUR_FOLDER="v${GAUSSIANBLUR_VERSION}"
 GAUSSIANBLUR_BUILD_DIR="${PREFIX}-${GAUSSIANBLUR_FOLDER}"
 
@@ -57,6 +57,7 @@ compile_gaussian_blur() {
             -DANDROID_ABI=$ABI \
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=OFF \
+            -DWITH_COVERAGE=OFF \
             -DANDROID_STL="c++_shared" ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time \n"
         nice cmake --build . --config Release -j $N_CPU_CORES
@@ -75,6 +76,7 @@ compile_gaussian_blur() {
             -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=ON \
+            -DWITH_COVERAGE=OFF \
             ..
 
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
@@ -97,6 +99,7 @@ compile_gaussian_blur() {
             -DWASM=ON \
             -DWITH_EXAMPLES=ON \
             -DWITH_TESTS=OFF \
+            -DWITH_COVERAGE=OFF \
             -DCMAKE_TOOLCHAIN_FILE="$HOME/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
             ..
 
@@ -162,6 +165,7 @@ compile_gaussian_blur() {
             -DENABLE_MULTITHREADING=ON \
             -DWITH_EXAMPLES=OFF \
             -DWITH_TESTS=OFF \
+            -DWITH_COVERAGE=OFF \
             -DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
@@ -198,6 +202,7 @@ compile_gaussian_blur() {
             -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=ON \
+            -DWITH_COVERAGE=OFF \
             ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
         nice cmake --build . --config Release -j $N_CPU_CORES

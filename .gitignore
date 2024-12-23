@@ -11,3 +11,4 @@ external/linux
 external/android
 external/ios
 .docker/
+coverage/
