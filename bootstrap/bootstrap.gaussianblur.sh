@@ -194,6 +194,29 @@ compile_gaussian_blur() {
             && ln -s "Versions/Current/Headers" "Headers" \
             && ln -s "Versions/Current/Resources" "Resources" \
             && ln -s "Versions/Current/Gaussianblur" "Gaussianblur")
+    elif [ "$PLATFORM" = "macos" ] && [ "$ABI" = "x86_64" ] ; then
+        # MacOS arm64
+        cmake -DENABLE_MULTITHREADING=ON \
+            -DWITH_EXAMPLES=ON \
+            -DCMAKE_INSTALL_PREFIX=${TEMP_PREFIX_DIR} \
+            -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
+            -DBUILD_SHARED_LIBS=ON \
+            -DWITH_TESTS=ON \
+            -DWITH_COVERAGE=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="$ABI" \
+            ..
+        printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
+        nice cmake --build . --config Release -j $N_CPU_CORES
+        cmake --install . --config Release
+
+        mkdir -p "$FINAL_PREFIX_DIR/lib"
+        mkdir -p "$FINAL_PREFIX_DIR/include"
+        mkdir -p "$FINAL_PREFIX_DIR/bin"
+
+        if [ -d ${FINAL_PREFIX_DIR}/include/gaussianblur ] ; then rm -rf ${FINAL_PREFIX_DIR}/include/gaussianblur ; fi
+        mv ${TEMP_PREFIX_DIR}/include/gaussianblur ${FINAL_PREFIX_DIR}/include/
+        mv ${TEMP_PREFIX_DIR}/lib/*.dylib ${FINAL_PREFIX_DIR}/lib/
+        mv ${TEMP_PREFIX_DIR}/bin/* ${FINAL_PREFIX_DIR}/bin/
     else
         # MacOS arm64
         cmake -DENABLE_MULTITHREADING=ON \
@@ -203,6 +226,7 @@ compile_gaussian_blur() {
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=ON \
             -DWITH_COVERAGE=OFF \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
             ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
         nice cmake --build . --config Release -j $N_CPU_CORES
