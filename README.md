@@ -205,7 +205,7 @@ cd examples/wasm
 ```
 Then navigate to `http://localhost:8080/gaussianblur.html`
 
-#### Note for macOS Users:
+#### Note for WebAssembly on macOS:
 
 If executing the bootstrap from a macOS machine, ensure GNU Grep is available, as the script uses a regex command (grep -oP) unavailable on macOS. This command sets the “closure compiled” variable name of `Module`, which is important for the worker to call the entry point correctly:
 
@@ -224,21 +224,21 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
 
 ### Artifact Management
 - Artifacts generated during builds are compressed and stored:
-  - Each workflow run produces downloadable build artifacts like binaries, shared / static library based on the environment.
+  - Each workflow run produces downloadable build artifacts like coverage report, binaries, shared / static library based on the environment.
   - Artifacts are retained for up to 90 days, available under the “Artifacts” section on the bottom page of the corresponding GitHub workflow run.
 
 
 ### Caching Strategies
 - The pipeline uses advanced caching strategies to speed up build times:
-  - Both Docker base dependencies and platform-specific dependencies are cached across workflow runs and stored in GitHub.
+  - Docker base dependencies are cached across workflow runs and stored in GitHub.
   - Cache mechanisms prevent redundant builds by restoring previously computed layers as long as the SHA of relevant files for the layer is unchanged.
   - A mechanism is in place to manage GitHub’s cache storage limits, releasing cache of older runs, not useful anymore.
 
 ### Testing
 - The pipeline is configured to:
   - Build and run the test suite on the Linux target.
-  - Tests must pass successfully before proceeding to the Android and WASM build stages.
   - A coverage report is generated after running tests, the .html report is available in the artifact zip
+  - Tests must pass successfully before generating the coverage report and build the Android and WASM libraries.
 
 ## Roadmap
 - Code quality and Doxygen
@@ -253,6 +253,6 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Acknowledgements
 
-- [stb_image](https://github.com/nothings/stb) for image loading and writing in the examples
-
 - [pffft by Julien Pommier](https://bitbucket.org/jpommier/pffft/src/master) for FFT processing and such lightweight and performant FFT library
+
+- [stb_image](https://github.com/nothings/stb) for image loading and writing in the examples
