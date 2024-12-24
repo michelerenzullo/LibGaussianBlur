@@ -40,8 +40,8 @@ RUN cd /app/.deps/gaussian_blur && ./scripts/coverage-report.sh
 RUN mv /app/.deps/gaussian_blur/coverage /app/coverage
 
 FROM builder-env AS android
-# Install OpenJDK 21
-COPY .docker/openjdk.tar.gz /opt/
+# Install OpenJDK 21.0.2
+RUN wget -q "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz" -O /opt/openjdk.tar.gz
 RUN mkdir -p /usr/lib/jvm/jdk && \
     tar -xzf /opt/openjdk.tar.gz --strip-components=1 -C /usr/lib/jvm/jdk && \
     rm /opt/openjdk.tar.gz && \
@@ -51,8 +51,8 @@ RUN mkdir -p /usr/lib/jvm/jdk && \
 ENV JAVA_HOME=/usr/lib/jvm/jdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Install Android tools
-COPY .docker/commandlinetools-linux.zip /opt/
+# Install Android tools 11076708_latest
+RUN wget -q "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -O /opt/commandlinetools-linux.zip
 # Set up android SDK and platform tools environment
 ENV ANDROID_HOME=/opt/android-sdk-linux
 ENV ANDROID_SDK_ROOT=$ANDROID_HOME

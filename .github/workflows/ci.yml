@@ -9,7 +9,6 @@ on:
       - .github/workflows/ci.yml
       - 'Dockerfile'
       - 'scripts/prepare-docker-base-dependencies.sh'
-      - 'scripts/prepare-docker-android-dependencies.sh'
       - 'scripts/github-cache-cleanup.sh'
       - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
@@ -18,7 +17,6 @@ on:
       - .github/workflows/ci.yml
       - 'Dockerfile'
       - 'scripts/prepare-docker-base-dependencies.sh'
-      - 'scripts/prepare-docker-android-dependencies.sh'
       - 'scripts/github-cache-cleanup.sh'
       - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
@@ -271,7 +269,6 @@ jobs:
         with:
           name: ${{ env.BUILD_TARGET }}-artifacts-${{ github.sha }}
           path: output-${{ env.BUILD_TARGET }}/app/coverage
-          include-hidden-files: true
           compression-level: 9
 
 
@@ -298,33 +295,13 @@ jobs:
             .deps
           key: ${{ runner.os }}-docker-dependencies-base-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
 
-      - name: (try to)Restore cached docker-dependencies-android
-        id: cache-docker-dependencies-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .docker
-          key: ${{ runner.os }}-docker-dependencies-${{ env.BUILD_TARGET }}-${{ hashFiles('scripts/prepare-docker-android-dependencies.sh') }}
-
-      - name: Prepare Docker android dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        run: ./scripts/prepare-docker-android-dependencies.sh
-
-      - name: Save docker android dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .docker
-          key: ${{ steps.cache-docker-dependencies-restore.outputs.cache-primary-key }}
-
       - name: (try to)Restore cached docker-android
         id: cache-docker-restore
         uses: actions/cache/restore@v4
         with:
           path: |
             .docker/.cache-${{ env.BUILD_TARGET }}
-          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'scripts/prepare-docker-android-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
+          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
 
       - name: Cleanup older cache for docker-android
         run: |
