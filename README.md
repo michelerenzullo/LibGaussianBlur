@@ -1,6 +1,7 @@
   
 # LibGaussianBlur
 
+![coverage](https://raw.githubusercontent.com/michelerenzullo/LibGaussianBlur/refs/heads/main/coverage.svg)
 
 LibGaussianBlur is a C++ library designed to apply Gaussian blur to images using the Fast Fourier Transform (FFT). It features optimizations for parallel tile processing and leverages the property that a centered kernel has an imaginary part of zero. The library supports multiple platforms, including Android, iOS, WebAssembly (Emscripten), macOS, and Linux, and provides examples for both desktop and web environments. This project is a refined version of [Blur_algorithms](https://github.com/michelerenzullo/Blur_algorithms).
 
