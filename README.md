@@ -238,9 +238,10 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
 - The pipeline is configured to:
   - Build and run the test suite on the Linux target.
   - Tests must pass successfully before proceeding to the Android and WASM build stages.
+  - A coverage report is generated after running tests, the .html report is available in the artifact zip
 
 ## Roadmap
-- Add test coverage report
+- Code quality and Doxygen
 - Flutter plugin with native bindings
 
 ## Contributing

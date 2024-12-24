@@ -26,7 +26,66 @@ TEST(GaussianBlurTest, PrepareKernelDFT) {
 }
 
 // Test case for Gaussian blur without applying to alpha channel
-TEST(GaussianBlurTest, BasicTestWithoutAlpha) {
+TEST(GaussianBlurTest, BasicTestRGB) {
+    // Create a 3x3 RGB image with sharp contrasts
+    std::vector<uint8_t> image_data = {
+        // Row 1
+        255, 0, 0,    0, 255, 0,       0, 0, 255,
+        // Row 2
+        0, 0, 0,      255, 255, 255,   128, 128, 128,
+        // Row 3
+        128, 0, 0,    0, 128, 0,       0, 0, 128
+    };
+
+    ImgGeom image_geom = {3, 3, 3}; // 3x3 image with 3 channels (RGB)
+    Image image = {image_data, image_geom};
+
+    float sigma = 3.0f;
+    bool apply_to_alpha = false;
+
+    // Calculate the average color and variance of the original image
+    float original_mean = calculate_average_color(image.data);
+    float original_variance = calculate_variance(image.data, original_mean);
+
+    // Apply Gaussian blur
+    gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
+
+    // Calculate the average color and variance of the blurred image
+    float blurred_mean = calculate_average_color(image.data);
+    float blurred_variance = calculate_variance(image.data, blurred_mean);
+
+    // Check that the variance is lower in the blurred image
+    ASSERT_LT(blurred_variance, original_variance);
+}
+
+// Test case that 
+TEST(GaussianBlurTest, InvalidChannelCount) {
+    // Create a 3x3 image with 2 channels
+    std::vector<uint8_t> image_data = {
+        // Row 1
+        255, 0,    0, 255,       0, 0,
+        // Row 2
+        0, 0,      255, 255,   128, 128,
+        // Row 3
+        128, 0,    0, 128,       0, 0
+    };
+    std::vector<uint8_t> original_image_data = image_data;
+
+    ImgGeom image_geom = {3, 3, 2}; // 3x3 image with 2 channels
+    Image image = {image_data, image_geom};
+
+    float sigma = 3.0f;
+    bool apply_to_alpha = false;
+    
+    gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
+    
+    // Assert that no processing was done and the data is unchanged
+    ASSERT_EQ(image.data, original_image_data);
+}
+
+
+// Test case for Gaussian blur without applying to alpha channel
+TEST(GaussianBlurTest, BasicTestRGBAWithoutAlpha) {
     // Create a 3x3 RGBA image with sharp contrasts
     std::vector<uint8_t> image_data = {
         // Row 1
@@ -37,7 +96,7 @@ TEST(GaussianBlurTest, BasicTestWithoutAlpha) {
         128, 0, 0, 128,    0, 128, 0, 128,       0, 0, 128, 128
     };
 
-    ImgGeom image_geom = {2, 2, 4}; // 2x2 image with 4 channels (RGBA)
+    ImgGeom image_geom = {3, 3, 4}; // 3x3 image with 4 channels (RGBA)
     Image image = {image_data, image_geom};
 
     float sigma = 3.0f;
@@ -63,8 +122,10 @@ TEST(GaussianBlurTest, BasicTestWithoutAlpha) {
     }
 }
 
-// Stress test for Gaussian blur with a large image
+// Stress test for Gaussian blur with a large image. Skip if coverage is enabled.
+#ifndef WITH_COVERAGE
 TEST(GaussianBlurTest, StressTest) {
+
     // Create a large image (e.g., 10240x10240 RGBA) with random data
     const int width = 10240;
     const int height = 10240;
@@ -102,9 +163,10 @@ TEST(GaussianBlurTest, StressTest) {
     // Check that the function completes (no specific assertions needed for stress test)
     SUCCEED();
 }
+#endif
 
 // Test case for Gaussian blur with applying to alpha channel
-TEST(GaussianBlurTest, BasicTestWithAlpha) {
+TEST(GaussianBlurTest, BasicTestRGBAWithAlpha) {
     // Create a 3x3 RGBA image with sharp contrasts
     std::vector<uint8_t> image_data = {
         // Row 1
@@ -115,7 +177,7 @@ TEST(GaussianBlurTest, BasicTestWithAlpha) {
         128, 0, 0, 128,    0, 128, 0, 128,       0, 0, 128, 128
     };
 
-    ImgGeom image_geom = {3, 3, 4}; // 2x2 image with 4 channels (RGBA)
+    ImgGeom image_geom = {3, 3, 4}; // 3x3 image with 4 channels (RGBA)
     Image image = {image_data, image_geom};
 
     float sigma = 3.0f;
@@ -135,14 +197,13 @@ TEST(GaussianBlurTest, BasicTestWithAlpha) {
     // Check that the variance is lower in the blurred image
     ASSERT_LT(blurred_variance, original_variance);
 
-    // Check that the alpha channel is altered
+    // Check that the alpha channel has been altered
     bool alpha_altered = false;
-    for (size_t i = 3; i < image.data.size(); i += 4) {
+    for (size_t i = 3; i < image.data.size(); i += 4)
         if (image.data[i] != 128) {
             alpha_altered = true;
             break;
         }
-    }
     ASSERT_TRUE(alpha_altered);
 }
 
@@ -168,24 +229,26 @@ TEST(HelpersTest, FlipBlock) {
 
 // Test case for deinterleave_channels
 TEST(HelpersTest, DeinterleaveChannels) {
-    // Create a simple 2x2 RGB image with known values
+    // Create a 3x3 RGB image
     std::vector<uint8_t> interleaved = {
-        255, 0, 0,    // Red
-        0, 255, 0,    // Green
-        0, 0, 255,    // Blue
-        255, 255, 255 // White
+        // Row 1
+        255, 0, 0,    0, 255, 0,       0, 0, 255,
+        // Row 2
+        0, 0, 0,      255, 255, 255,   128, 128, 128,
+        // Row 3
+        128, 0, 0,    0, 128, 0,       0, 0, 128
     };
 
-    std::vector<float> red(4), green(4), blue(4);
+    std::vector<float> red(9), green(9), blue(9);
     std::array<float*, 3> channels = { red.data(), green.data(), blue.data() };
 
     // Deinterleave the channels
-    deinterleave_channels<3>(interleaved.data(), channels.data(), 4);
+    deinterleave_channels<3>(interleaved.data(), channels.data(), 9);
 
     // Check the results
-    std::vector<float> expected_red = { 255, 0, 0, 255 };
-    std::vector<float> expected_green = { 0, 255, 0, 255 };
-    std::vector<float> expected_blue = { 0, 0, 255, 255 };
+    std::vector<float> expected_red = { 255, 0, 0, 0, 255, 128, 128, 0, 0};
+    std::vector<float> expected_green = { 0, 255, 0, 0, 255, 128, 0, 128, 0 };
+    std::vector<float> expected_blue = { 0, 0, 255, 0, 255, 128, 0, 0, 128 };
 
     ASSERT_EQ(red, expected_red);
     ASSERT_EQ(green, expected_green);
@@ -194,23 +257,25 @@ TEST(HelpersTest, DeinterleaveChannels) {
 
 // Test case for interleave_channels
 TEST(HelpersTest, InterleaveChannels) {
-    // Create separate channels for a 2x2 RGB image
-    std::vector<float> red = { 255, 0, 0, 255 };
-    std::vector<float> green = { 0, 255, 0, 255 };
-    std::vector<float> blue = { 0, 0, 255, 255 };
+    // Create separate channels for a 3x3 RGB image
+    std::vector<float> red = { 255, 0, 0, 0, 255, 128, 128, 0, 0};
+    std::vector<float> green = { 0, 255, 0, 0, 255, 128, 0, 128, 0 };
+    std::vector<float> blue = { 0, 0, 255, 0, 255, 128, 0, 0, 128 };
     std::array<const float*, 3> channels = { red.data(), green.data(), blue.data() };
 
-    std::vector<uint8_t> interleaved(12);
+    std::vector<uint8_t> interleaved(27);
 
     // Interleave the channels
-    interleave_channels<3>(channels.data(), interleaved.data(), 4);
+    interleave_channels<3>(channels.data(), interleaved.data(), 9);
 
     // Check the results
     std::vector<uint8_t> expected_interleaved = {
-        255, 0, 0,    // Red
-        0, 255, 0,    // Green
-        0, 0, 255,    // Blue
-        255, 255, 255 // White
+        // Row 1
+        255, 0, 0,    0, 255, 0,       0, 0, 255,
+        // Row 2
+        0, 0, 0,      255, 255, 255,   128, 128, 128,
+        // Row 3
+        128, 0, 0,    0, 128, 0,       0, 0, 128
     };
 
     ASSERT_EQ(interleaved, expected_interleaved);

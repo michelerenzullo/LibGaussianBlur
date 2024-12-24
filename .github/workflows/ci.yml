@@ -1,4 +1,4 @@
-name: Docker Build(s), Test and Push(es)
+name: Continuous Integration
 
 on:
   push:
@@ -9,18 +9,16 @@ on:
       - .github/workflows/ci.yml
       - 'Dockerfile'
       - 'scripts/prepare-docker-base-dependencies.sh'
-      - 'scripts/prepare-docker-wasm-dependencies.sh'
-      - 'scripts/prepare-docker-android-dependencies.sh'
       - 'scripts/github-cache-cleanup.sh'
+      - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
   pull_request:
     paths:
       - .github/workflows/ci.yml
       - 'Dockerfile'
       - 'scripts/prepare-docker-base-dependencies.sh'
-      - 'scripts/prepare-docker-wasm-dependencies.sh'
-      - 'scripts/prepare-docker-android-dependencies.sh'
       - 'scripts/github-cache-cleanup.sh'
+      - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
 
 jobs:
@@ -197,9 +195,85 @@ jobs:
         run: |
           docker run --rm ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:linux ./GaussianBlurTests
 
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-24.04
+    needs: [test]
+    env:
+      BUILD_TARGET: coverage
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD}}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Set up Docker CLI
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore cached docker-dependencies-base
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .deps
+          key: ${{ runner.os }}-docker-dependencies-base-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
+
+      - name: (try to)Restore cached docker-coverage
+        id: cache-docker-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .docker/.cache-${{ env.BUILD_TARGET }}
+          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh', 'scripts/coverage-report.sh') }}
+
+      - name: Cleanup older cache for docker-coverage
+        run: |
+          ./scripts/github-cache-cleanup.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} --old --prefix ${{ runner.os }}-docker-${{ env.BUILD_TARGET }} --exclude ${{ steps.cache-docker-restore.outputs.cache-primary-key }}
+
+      - name: Restore cached docker-builder-env
+        if: steps.cache-docker-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .docker/.cache-builder-env
+          key: ${{ runner.os }}-docker-builder-env-${{ hashFiles('Dockerfile', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
+  
+      - name: Copy contents of docker-builder-env cache to coverage cache if cache miss (recycle cache on first run)
+        if: steps.cache-docker-restore.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .docker/.cache-${{ env.BUILD_TARGET }}
+          cp -r .docker/.cache-builder-env/* .docker/.cache-${{ env.BUILD_TARGET }}/
+
+      - name: Build Docker image (coverage)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.BUILD_TARGET }}
+          cache-from: type=local,src=.docker/.cache-${{ env.BUILD_TARGET }}
+          cache-to: type=local,dest=.docker/.cache-${{ env.BUILD_TARGET }}
+          outputs: type=local,dest=./output-${{ env.BUILD_TARGET }}
+          push: false
+          tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
+
+      - name: Save docker coverage if cache miss
+        if: steps.cache-docker-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .docker/.cache-${{ env.BUILD_TARGET }}
+          key: ${{ steps.cache-docker-restore.outputs.cache-primary-key }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_TARGET }}-artifacts-${{ github.sha }}
+          path: output-${{ env.BUILD_TARGET }}/app/coverage
+          compression-level: 9
+
 
   android:
-    name: Build `android` Target
+    name: Build and Push `android` Target
     runs-on: ubuntu-24.04
     needs: [test]
     env:
@@ -221,33 +295,13 @@ jobs:
             .deps
           key: ${{ runner.os }}-docker-dependencies-base-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
 
-      - name: (try to)Restore cached docker-dependencies-android
-        id: cache-docker-dependencies-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .docker
-          key: ${{ runner.os }}-docker-dependencies-${{ env.BUILD_TARGET }}-${{ hashFiles('scripts/prepare-docker-android-dependencies.sh') }}
-
-      - name: Prepare Docker android dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        run: ./scripts/prepare-docker-android-dependencies.sh
-
-      - name: Save docker android dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .docker
-          key: ${{ steps.cache-docker-dependencies-restore.outputs.cache-primary-key }}
-
       - name: (try to)Restore cached docker-android
         id: cache-docker-restore
         uses: actions/cache/restore@v4
         with:
           path: |
             .docker/.cache-${{ env.BUILD_TARGET }}
-          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'scripts/prepare-docker-android-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
+          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
 
       - name: Cleanup older cache for docker-android
         run: |
@@ -295,7 +349,7 @@ jobs:
   
 
   wasm:
-    name: Build `wasm` Target
+    name: Build and Push `wasm` Target
     runs-on: ubuntu-24.04
     needs: [test]
     env:
@@ -317,33 +371,13 @@ jobs:
             .deps
           key: ${{ runner.os }}-docker-dependencies-base-${{ hashFiles('scripts/prepare-docker-base-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh') }}
 
-      - name: (try to)Restore cached docker-dependencies-wasm
-        id: cache-docker-dependencies-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .docker
-          key: ${{ runner.os }}-docker-dependencies-${{ env.BUILD_TARGET }}-${{ hashFiles('scripts/prepare-docker-wasm-dependencies.sh') }}
-
-      - name: Prepare Docker wasm dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        run: ./scripts/prepare-docker-${{ env.BUILD_TARGET }}-dependencies.sh
-
-      - name: Save docker wasm dependencies if cache miss
-        if: steps.cache-docker-dependencies-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .docker
-          key: ${{ steps.cache-docker-dependencies-restore.outputs.cache-primary-key }}
-
       - name: (try to)Restore cached docker-wasm
         id: cache-docker-restore
         uses: actions/cache/restore@v4
         with:
           path: |
             .docker/.cache-${{ env.BUILD_TARGET }}
-          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'scripts/prepare-docker-wasm-dependencies.sh', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
+          key: ${{ runner.os }}-docker-${{ env.BUILD_TARGET }}-${{ hashFiles('Dockerfile', 'bootstrap/bootstrap.gaussianblur.sh', 'scripts/prepare-docker-base-dependencies.sh') }}
 
       - name: Cleanup older cache for docker-wasm
         run: |

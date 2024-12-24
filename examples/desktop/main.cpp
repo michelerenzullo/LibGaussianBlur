@@ -58,6 +58,14 @@ int main(int argc, char* argv[]) {
         print_help();
         return 0;
     }
+
+	// Check for the correct number of arguments
+    if (argc < 3 || argc > 4) {
+        std::cerr << "Invalid number of arguments.\n";
+        print_help();
+        return 1;
+    }
+
 	// If the image has the alpha channel, the convolution is done on the 4th channel if alpha is true, otherwise on the first 3 channels only
 	bool apply_to_alpha = false;
 	if (argc == 4) apply_to_alpha = std::stoi(argv[3]) == 1;
