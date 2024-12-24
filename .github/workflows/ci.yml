@@ -264,13 +264,18 @@ jobs:
             .docker/.cache-${{ env.BUILD_TARGET }}
           key: ${{ steps.cache-docker-restore.outputs.cache-primary-key }}
 
+      - name: Generate coverage badge
+        uses: ImBIOS/lcov-coverage-badge@v1.0.1
+        with:
+          file: output-${{ env.BUILD_TARGET }}/app/coverage/lcov.info
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BUILD_TARGET }}-artifacts-${{ github.sha }}
           path: output-${{ env.BUILD_TARGET }}/app/coverage
           compression-level: 9
-
 
   android:
     name: Build and Push `android` Target
