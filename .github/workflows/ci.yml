@@ -196,7 +196,7 @@ jobs:
           docker run --rm ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:linux ./GaussianBlurTests
 
   coverage:
-    name: Build Coverage report
+    name: Generate Coverage Report
     runs-on: ubuntu-24.04
     needs: [test]
     env:
@@ -273,7 +273,7 @@ jobs:
 
 
   android:
-    name: Build `android` Target
+    name: Build and Push `android` Target
     runs-on: ubuntu-24.04
     needs: [test]
     env:
@@ -349,7 +349,7 @@ jobs:
   
 
   wasm:
-    name: Build `wasm` Target
+    name: Build and Push `wasm` Target
     runs-on: ubuntu-24.04
     needs: [test]
     env:
