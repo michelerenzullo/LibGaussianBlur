@@ -1,17 +1,17 @@
-#include <gaussianblur/gaussianblur.h>
-#include <gtest/gtest.h>
-
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <gaussianblur/gaussianblur.h>
 #include <gaussianblur/helpers.hpp>
+#include <gtest/gtest.h>
+#include <iostream>
 #include <random>
-
 #include "test_helpers.hpp"
 
 // Test case for prepare_kernel_DFT
 TEST(GaussianBlurTest, PrepareKernelDFT) {
-  ImgGeom image_geom = {4, 4, 3};  // 4x4 image with 3 channels (RGB)
-  float sigma = 2.0f;
+  const ImgGeom image_geom = {4, 4, 3};  // 4x4 image with 3 channels (RGB)
+  float sigma = 2.0F;
 
   // Prepare the kernel DFT
   KernelDFT kernel_dft = gaussianblur::prepare_kernel_DFT(image_geom, sigma);
@@ -37,10 +37,10 @@ TEST(GaussianBlurTest, BasicTestRGB) {
                                      // Row 3
                                      128, 0, 0, 0, 128, 0, 0, 0, 128};
 
-  ImgGeom image_geom = {3, 3, 3};  // 3x3 image with 3 channels (RGB)
+  const ImgGeom image_geom = {3, 3, 3};  // 3x3 image with 3 channels (RGB)
   Image image = {image_data, image_geom};
 
-  float sigma = 3.0f;
+  float sigma = 3.0F;
   bool apply_to_alpha = false;
 
   // Calculate the average color and variance of the original image
@@ -72,7 +72,7 @@ TEST(GaussianBlurTest, InvalidChannelCount) {
   ImgGeom image_geom = {3, 3, 2};  // 3x3 image with 2 channels
   Image image = {image_data, image_geom};
 
-  float sigma = 3.0f;
+  float sigma = 3.0F;
   bool apply_to_alpha = false;
 
   gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
@@ -84,7 +84,7 @@ TEST(GaussianBlurTest, InvalidChannelCount) {
 // Test case for Gaussian blur without applying to alpha channel
 TEST(GaussianBlurTest, BasicTestRGBAWithoutAlpha) {
   // Create a 3x3 RGBA image with sharp contrasts
-  std::vector<uint8_t> image_data = {
+  const std::vector<uint8_t> image_data = {
       // Row 1
       255, 0, 0, 128, 0, 255, 0, 128, 0, 0, 255, 128,
       // Row 2
@@ -92,22 +92,22 @@ TEST(GaussianBlurTest, BasicTestRGBAWithoutAlpha) {
       // Row 3
       128, 0, 0, 128, 0, 128, 0, 128, 0, 0, 128, 128};
 
-  ImgGeom image_geom = {3, 3, 4};  // 3x3 image with 4 channels (RGBA)
+  const ImgGeom image_geom = {3, 3, 4};  // 3x3 image with 4 channels (RGBA)
   Image image = {image_data, image_geom};
 
-  float sigma = 3.0f;
+  float sigma = 3.0F;
   bool apply_to_alpha = false;
 
   // Calculate the average color and variance of the original image
-  float original_mean = calculate_average_color(image.data);
-  float original_variance = calculate_variance(image.data, original_mean);
+  const float original_mean = calculate_average_color(image.data);
+  const float original_variance = calculate_variance(image.data, original_mean);
 
   // Apply Gaussian blur
   gaussianblur::gaussianblur(image, sigma, apply_to_alpha);
 
   // Calculate the average color and variance of the blurred image
-  float blurred_mean = calculate_average_color(image.data);
-  float blurred_variance = calculate_variance(image.data, blurred_mean);
+  const float blurred_mean = calculate_average_color(image.data);
+  const float blurred_variance = calculate_variance(image.data, blurred_mean);
 
   // Check that the variance is lower in the blurred image
   ASSERT_LT(blurred_variance, original_variance);
@@ -123,9 +123,9 @@ TEST(GaussianBlurTest, BasicTestRGBAWithoutAlpha) {
 #ifndef WITH_COVERAGE
 TEST(GaussianBlurTest, StressTest) {
   // Create a large image (e.g., 10240x10240 RGBA) with random data
-  const int width = 10240;
-  const int height = 10240;
-  const int channels = 4;
+  const size_t width = 10240;
+  const size_t height = 10240;
+  const size_t channels = 4;
   std::vector<uint8_t> image_data(width * height * channels);
 
   // Fill the image with random data
@@ -136,11 +136,11 @@ TEST(GaussianBlurTest, StressTest) {
     pixel = dis(gen);
   }
 
-  ImgGeom image_geom = {width, height, channels};
+  const ImgGeom image_geom = {width, height, channels};
   Image image = {image_data, image_geom};
 
-  float sigma = 5.0f;
-  bool apply_to_alpha = true;
+  const float sigma = 5.0F;
+  const bool apply_to_alpha = true;
 
   // Measure the time taken to apply Gaussian blur
   auto start = std::chrono::high_resolution_clock::now();
@@ -177,7 +177,7 @@ TEST(GaussianBlurTest, BasicTestRGBAWithAlpha) {
   ImgGeom image_geom = {3, 3, 4};  // 3x3 image with 4 channels (RGBA)
   Image image = {image_data, image_geom};
 
-  float sigma = 3.0f;
+  float sigma = 3.0F;
   bool apply_to_alpha = true;
 
   // Calculate the average color and variance of the original image
@@ -207,14 +207,14 @@ TEST(GaussianBlurTest, BasicTestRGBAWithAlpha) {
 // Test case for flip_block
 TEST(HelpersTest, FlipBlock) {
   // Create a simple 2x2 block
-  std::vector<float> input = {1.0f, 2.0f, 3.0f, 4.0f};
+  std::vector<float> input = {1.0F, 2.0F, 3.0F, 4.0F};
   std::vector<float> output(4);
 
   // Flip the block
   flip_block<1>(input.data(), output.data(), 2, 2);
 
   // Check the results
-  std::vector<float> expected_output = {1.0f, 3.0f, 2.0f, 4.0f};
+  const std::vector<float> expected_output = {1.0F, 3.0F, 2.0F, 4.0F};
   ASSERT_EQ(output, expected_output);
 }
 
@@ -235,9 +235,9 @@ TEST(HelpersTest, DeinterleaveChannels) {
   deinterleave_channels<3>(interleaved.data(), channels.data(), 9);
 
   // Check the results
-  std::vector<float> expected_red = {255, 0, 0, 0, 255, 128, 128, 0, 0};
-  std::vector<float> expected_green = {0, 255, 0, 0, 255, 128, 0, 128, 0};
-  std::vector<float> expected_blue = {0, 0, 255, 0, 255, 128, 0, 0, 128};
+  const std::vector<float> expected_red = {255, 0, 0, 0, 255, 128, 128, 0, 0};
+  const std::vector<float> expected_green = {0, 255, 0, 0, 255, 128, 0, 128, 0};
+  const std::vector<float> expected_blue = {0, 0, 255, 0, 255, 128, 0, 0, 128};
 
   ASSERT_EQ(red, expected_red);
   ASSERT_EQ(green, expected_green);
@@ -259,7 +259,7 @@ TEST(HelpersTest, InterleaveChannels) {
   interleave_channels<3>(channels.data(), interleaved.data(), 9);
 
   // Check the results
-  std::vector<uint8_t> expected_interleaved = {// Row 1
+  const std::vector<uint8_t> expected_interleaved = {// Row 1
                                                255, 0, 0, 0, 255, 0, 0, 0, 255,
                                                // Row 2
                                                0, 0, 0, 255, 255, 255, 128, 128,

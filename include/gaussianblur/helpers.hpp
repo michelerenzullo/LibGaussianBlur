@@ -216,7 +216,7 @@ void deinterleave_channels(const T *const interleaved, U **const deinterleaved,
   // Cache-friendly deinterleave, splitting for blocks of 16 MB, inspired by
   // flip-block
   constexpr float round =
-      std::is_integral_v<U> ? std::is_integral_v<T> ? 0 : 0.5f : 0;
+      std::is_integral_v<U> ? std::is_integral_v<T> ? 0 : 0.5F : 0;
   constexpr uint32_t block =
       L2_CACHE_SIZE / (Channels * std::max(sizeof(T), sizeof(U)));
   const uint32_t num_blocks = std::ceil(total_size / (float)block);
@@ -229,12 +229,12 @@ void deinterleave_channels(const T *const interleaved, U **const deinterleaved,
     for (uint32_t c = 0; c < Channels; ++c) {
       channel_ptrs[c] = deinterleaved[c] + x;
     }
-    const T *const interleaved_ptr = interleaved + x * Channels;
+    const T *const interleaved_ptr = interleaved + (x * Channels);
 
     const int blockx = (n == num_blocks - 1) ? last_block_size : block;
     for (int xx = 0; xx < blockx; ++xx) {
       for (uint32_t c = 0; c < Channels; ++c) {
-        channel_ptrs[c][xx] = interleaved_ptr[xx * Channels + c] + round;
+        channel_ptrs[c][xx] = interleaved_ptr[(xx * Channels) + c] + round;
       }
     }
   });
@@ -244,7 +244,7 @@ template <uint32_t Channels, typename T, typename U>
 void interleave_channels(const U **const deinterleaved, T *const interleaved,
                          const uint32_t total_size) {
   constexpr float round =
-      std::is_integral_v<T> ? std::is_integral_v<U> ? 0 : 0.5f : 0;
+      std::is_integral_v<T> ? std::is_integral_v<U> ? 0 : 0.5F : 0;
   constexpr uint32_t block =
       L2_CACHE_SIZE / (Channels * std::max(sizeof(T), sizeof(U)));
   const uint32_t num_blocks = std::ceil(total_size / (float)block);

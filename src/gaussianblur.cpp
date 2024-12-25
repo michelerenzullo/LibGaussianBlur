@@ -15,7 +15,7 @@ int gaussian_window(const float sigma, const int max_width = 0) {
   // bigger than it
 
   const float radius = sigma * sqrt(2 * log(255)) - 1;
-  int width = radius * 2 + 0.5f;
+  int width = radius * 2 + 0.5F;
   if (max_width) width = std::min(width, max_width);
 
   if (width % 2 == 0) ++width;
@@ -34,8 +34,8 @@ void get_gaussian(T &kernel, const float sigma, int width = 0,
 
   kernel.resize(FFT_length ? FFT_length : width);
 
-  const float mid_w = (width - 1) / 2.0f;
-  const float s = 2.0f * sigma * sigma;
+  const float mid_w = (width - 1) / 2.0F;
+  const float s = 2.0F * sigma * sigma;
 
   int i = 0;
 
@@ -43,10 +43,10 @@ void get_gaussian(T &kernel, const float sigma, int width = 0,
     kernel.at(i) = (exp(-(y * y) / s)) / (std::numbers::pi_v<float> * s);
 
   const float sum =
-      1.0f / std::accumulate(kernel.begin(), kernel.begin() + width, 0.0f);
+      1.0F / std::accumulate(kernel.begin(), kernel.begin() + width, 0.0F);
 
   std::transform(kernel.begin(), kernel.begin() + width, kernel.begin(),
-                 [&sum](auto &i) { return i * sum; });
+                 [&sum](const auto &i) { return i * sum; });
 
   // fit the kernel in the FFT_length and shift the center to avoid circular
   // convolution
@@ -248,8 +248,8 @@ void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT,
       std::chrono::steady_clock::now();
   const int maxsize =
       std::max(kernelDFT.kerf_1D_row.size(), kernelDFT.kerf_1D_col.size());
-  const float divisor_col = 1.0f / kernelDFT.kerf_1D_col.size();
-  const float divisor_row = 1.0f / kernelDFT.kerf_1D_row.size();
+  const float divisor_col = 1.0F / kernelDFT.kerf_1D_col.size();
+  const float divisor_row = 1.0F / kernelDFT.kerf_1D_row.size();
 
   AlignedVector<float> tmp;
   tmp.reserve(maxsize);

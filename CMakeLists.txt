@@ -28,9 +28,17 @@ endif()
 # If compiling to WebAssembly
 if(WASM)
     message(STATUS "Compiling to WebAssembly")
-    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-        set(CMAKE_TOOLCHAIN_FILE "$ENV{HOME}/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake")
+    if(NOT CMAKE_TOOLCHAIN_FILE OR NOT CMAKE_TOOLCHAIN_FILE MATCHES "Emscripten.cmake")
+        find_program(EMCC_EXE emcc)
+        if (EMCC_EXE)
+            message ("-- Found Emscripten")
+            get_filename_component(EMSDK_DIR ${EMCC_EXE} DIRECTORY)
+            set(CMAKE_TOOLCHAIN_FILE "${EMSDK_DIR}/cmake/Modules/Platform/Emscripten.cmake")
+        else()
+            message(FATAL_ERROR "-- Emscripten not found! Aborting...")
+        endif()
     endif()
+    message(STATUS "Using Emscripten toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm")
 endif()
 
@@ -60,15 +68,39 @@ if(APPLE AND NOT WASM)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Accelerate")
 endif()
 
+# Cpp check for static analysis
+find_program(CPPCHECK_EXE cppcheck)
+if (CPPCHECK_EXE)
+    message("-- Program cppcheck found: ${CPPCHECK_EXE}")
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    add_custom_target(cppcheck
+            COMMAND "${CPPCHECK_EXE}" --std=c++${CMAKE_CXX_STANDARD} "--suppressions-list=${CMAKE_SOURCE_DIR}/.cppcheck-suppressions" --enable=all "--project=${CMAKE_BINARY_DIR}/compile_commands.json")
+else ()
+    message("-- Program cppcheck NOT found!")
+endif ()
+
+# Clang tidy
+if (CLANG_TIDY_ENABLED)
+    find_program(CLANG_TIDY_EXE clang-tidy)
+    if (CLANG_TIDY_EXE)
+        message("-- Program clang-tidy found: ${CLANG_TIDY_EXE}")
+        set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+        set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}" --quiet "--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy" -p "${CMAKE_BINARY_DIR}/compile_commands.json")
+        set(CMAKE_CXX_CLANG_TIDY "${CMAKE_C_CLANG_TIDY}")
+    else ()
+        message("-- Program clang-tidy NOT found!")
+    endif ()
+endif ()
+
 # Project name
 project(GaussianBlur)
 include_directories(include)
 
 # Add library
 if(WASM)
-    add_library(GaussianBlurLib STATIC "include/pffft_pommier/pffft.c" "src/gaussianblur.cpp")
+    add_library(GaussianBlurLib STATIC "${CMAKE_SOURCE_DIR}/include/pffft_pommier/pffft.c" "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
 else()
-    add_library(GaussianBlurLib "include/pffft_pommier/pffft.c" "src/gaussianblur.cpp")
+    add_library(GaussianBlurLib "${CMAKE_SOURCE_DIR}/include/pffft_pommier/pffft.c" "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
 endif()
 
 # Set properties for the library
@@ -77,7 +109,7 @@ set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME "Gaussianblur")
 if(WITH_EXAMPLES)
     message(STATUS "Building examples")
     if(WASM)
-        add_executable(GaussianBlur "examples/wasm/main.cpp")
+        add_executable(GaussianBlur "${CMAKE_SOURCE_DIR}/examples/wasm/main.cpp")
         set(WASM_COMMON_LINK_OPTIONS 
             "SHELL: --closure 1"
             "-sALLOW_MEMORY_GROWTH=1"
@@ -104,7 +136,7 @@ if(WITH_EXAMPLES)
         # Install the WASM file
         install(FILES "${CMAKE_BINARY_DIR}/GaussianBlur.wasm" DESTINATION bin)
     else()
-        add_executable(GaussianBlur "examples/desktop/main.cpp")
+        add_executable(GaussianBlur "${CMAKE_SOURCE_DIR}/examples/desktop/main.cpp")
     endif()
 
     target_link_libraries(GaussianBlur GaussianBlurLib)
@@ -127,12 +159,17 @@ if(WITH_TESTS)
     set(BUILD_SHARED_LIBS_SAVE ${BUILD_SHARED_LIBS})
     set(BUILD_SHARED_LIBS OFF)
     add_subdirectory(external/googletest)
+    
+    # Skip clang-tidy for Google Test
+    set_target_properties(gtest PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+    set_target_properties(gtest_main PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVE})
 
     include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
     # Add test executable
-    add_executable(GaussianBlurTests tests/test_gaussianblur.cpp)
+    add_executable(GaussianBlurTests ${CMAKE_SOURCE_DIR}/tests/test_gaussianblur.cpp)
     target_link_libraries(GaussianBlurTests GaussianBlurLib gtest_main)
     add_test(NAME GaussianBlurTests COMMAND GaussianBlurTests)
     install(TARGETS GaussianBlurTests DESTINATION bin)

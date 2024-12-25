@@ -2,8 +2,8 @@ FROM debian:bookworm-slim AS base
 
 # Install dependencies
 RUN apt-get -qq update; \
-    apt-get install -qqy --no-install-recommends \
-        gnupg2 wget ca-certificates apt-transport-https curl unzip make cmake xz-utils
+    apt-get install -qqy --no-install-recommends gnupg2 wget ca-certificates \
+    apt-transport-https curl unzip make cmake xz-utils cppcheck
 
 # Install LLVM
 RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
