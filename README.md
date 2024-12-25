@@ -163,8 +163,25 @@ This will generate the necessary files in the `external/ios` folder.
 ```sh
 mkdir build
 cd build
-cmake -DENABLE_MULTITHREADING=ON -DWITH_EXAMPLES=ON -DWITH_TESTS=ON ..
-make
+cmake -DENABLE_MULTITHREADING=ON -DWITH_EXAMPLES=ON -DWITH_TESTS=ON -DWITH_COVERAGE=OFF ..
+cmake --build .
+```
+
+###### Static analysis tool and linter
+
+If you have cppcheck installed on your system, you can run static analysis using the following command:
+
+```sh
+cmake --build . --target cppcheck
+```
+
+You might also compile with clang-tidy by passing the `-DCLANG_TIDY_ENABLED=ON` option for :
+
+```sh
+mkdir build
+cd build
+cmake -DENABLE_MULTITHREADING=ON -DWITH_EXAMPLES=ON -DWITH_TESTS=OFF -DCLANG_TIDY_ENABLED=ON ..
+cmake --build .
 ```
 
 ##### WebAssembly
