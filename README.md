@@ -261,7 +261,7 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
   - Tests must pass successfully before generating the coverage report and build the Android and WASM libraries.
 
 ## Roadmap
-- Code quality and Doxygen
+- Doxygen
 - Flutter plugin with native bindings
 
 ## Contributing
