@@ -19,11 +19,6 @@ if(WITH_COVERAGE AND WITH_EXAMPLES)
     message(FATAL_ERROR "Coverage can affect the performance of the examples. Pick one or the other.")
 endif()
 
-# Ensure WITH_TESTS is enabled if WITH_COVERAGE is enabled
-if(WITH_COVERAGE)
-    message(STATUS "Including coverage")
-    set(WITH_TESTS ON CACHE BOOL "Include tests" FORCE)
-endif()
 
 # If compiling to WebAssembly
 if(WASM)
@@ -42,8 +37,12 @@ if(WASM)
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm")
 endif()
 
-# Set common compiler flags
+# Set common compiler flags for coverage
 if(WITH_COVERAGE)
+    # Ensure WITH_TESTS is enabled if WITH_COVERAGE is enabled
+    message(STATUS "Including coverage")
+    set(WITH_TESTS ON CACHE BOOL "Include tests" FORCE)
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -coverage -fprofile-arcs -ftest-coverage")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g3 -coverage -fprofile-arcs -ftest-coverage")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -coverage -g3 -O0 -fprofile-arcs -ftest-coverage")
@@ -67,6 +66,10 @@ endif()
 if(APPLE AND NOT WASM)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Accelerate")
 endif()
+
+# Project name
+project(GaussianBlur)
+include_directories(include)
 
 # Cpp check for static analysis
 find_program(CPPCHECK_EXE cppcheck)
@@ -92,16 +95,22 @@ if (CLANG_TIDY_ENABLED)
     endif ()
 endif ()
 
-# Project name
-project(GaussianBlur)
-include_directories(include)
-
-# Add library
-if(WASM)
-    add_library(GaussianBlurLib STATIC "${CMAKE_SOURCE_DIR}/include/pffft_pommier/pffft.c" "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
-else()
-    add_library(GaussianBlurLib "${CMAKE_SOURCE_DIR}/include/pffft_pommier/pffft.c" "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
+# Add pffft object
+add_library(pffft OBJECT "${CMAKE_SOURCE_DIR}/include/pffft_pommier/pffft.c")
+# Exclude clang-tidy for pffft
+if (CLANG_TIDY_ENABLED)
+    set_target_properties(pffft PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
 endif()
+
+# Add GaussianBlur library
+if(WASM)
+    add_library(GaussianBlurLib STATIC "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
+else()
+    add_library(GaussianBlurLib "${CMAKE_SOURCE_DIR}/src/gaussianblur.cpp")
+endif()
+
+# Link pffft library to GaussianBlurLib
+target_link_libraries(GaussianBlurLib PRIVATE pffft)
 
 # Set properties for the library
 set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME "Gaussianblur")
@@ -161,8 +170,10 @@ if(WITH_TESTS)
     add_subdirectory(external/googletest)
     
     # Skip clang-tidy for Google Test
-    set_target_properties(gtest PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
-    set_target_properties(gtest_main PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+    if (CLANG_TIDY_ENABLED)
+        set_target_properties(gtest PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+        set_target_properties(gtest_main PROPERTIES CXX_CLANG_TIDY "" C_CLANG_TIDY "")
+    endif()
 
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVE})
 

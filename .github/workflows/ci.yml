@@ -12,6 +12,7 @@ on:
       - 'scripts/github-cache-cleanup.sh'
       - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
+      - 'CMakeLists.txt'
   pull_request:
     paths:
       - .github/workflows/ci.yml
@@ -20,6 +21,7 @@ on:
       - 'scripts/github-cache-cleanup.sh'
       - 'scripts/coverage-report.sh'
       - 'bootstrap/**'
+      - 'CMakeLists.txt'
 
 jobs:
   cleanup:
