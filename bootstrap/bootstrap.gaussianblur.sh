@@ -118,18 +118,15 @@ compile_gaussian_blur() {
         cp ../examples/wasm/multi-thread/gaussianblur.html ${FINAL_PREFIX_DIR}/bin/
         ######## Find the closure compiled Module var name to set up in worker.js in order to load the wasm module
         GREP_CMD="grep"
-        SED_CMD="sed -i"
         if command -v ggrep; then
             GREP_CMD="ggrep"
-            SED_CMD="sed -i ''"
         fi
         MODULE_NAME=$($GREP_CMD -oP '\b[a-zA-Z]\b(?=[^a-zA-Z]*typeof Module(?![\s\S]*typeof Module))' "${FINAL_PREFIX_DIR}/bin/GaussianBlur.js")
         if [ -z "$MODULE_NAME" ]; then
             printf "${RED}Error: Unable to find the Module value in GaussianBlur.js${RESET}\n"
             exit 1
         fi
-        cp ../examples/wasm/multi-thread/gaussianblur_worker.js ${FINAL_PREFIX_DIR}/bin/
-        $SED_CMD "s|const Module = h|const Module = "${MODULE_NAME}";|" "${FINAL_PREFIX_DIR}/bin/gaussianblur_worker.js"
+        sed "s|const Module = h|const Module = "${MODULE_NAME}"|" ../examples/wasm/multi-thread/gaussianblur_worker.js > "${FINAL_PREFIX_DIR}/bin/gaussianblur_worker.js"
         printf "${GREEN}Module var name closure compiled is '${MODULE_NAME}', succesfully set in ${FINAL_PREFIX_DIR}/bin/gaussianblur_worker.js${RESET}\n"
         ####################
     elif [ "$PLATFORM" = "ios" ] ; then

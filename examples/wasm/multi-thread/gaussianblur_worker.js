@@ -9,7 +9,7 @@ onmessage = async e => {
 	const arguments = e.data[1]
 
 	const startTime = performance.now()
-	const Module = z //needed because of closure
+	const Module = h //needed because of closure
 
 	//js string to C like const char array with null terminator
 	const utf8 = new Uint8Array(arguments.length + 1);
