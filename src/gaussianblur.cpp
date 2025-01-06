@@ -1,11 +1,10 @@
 
 #include <gaussianblur/gaussianblur.h>
-
 #include <gaussianblur/helpers.hpp>
-extern "C" {
-#include <pffft_pommier/pffft.h>
-}
 #include <numbers>
+extern "C" {
+  #include <pffft_pommier/pffft.h>
+}
 
 namespace gaussianblur {
 

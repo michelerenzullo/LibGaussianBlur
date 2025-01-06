@@ -7,7 +7,11 @@
 #include <thread>
 #include <vector>
 extern "C" {
-#include "pffft_pommier/pffft.h"
+  // Forward declaration of PFFFT_Setup
+  struct PFFFT_Setup;
+
+  // Declaration of pffft_destroy_setup function
+  void pffft_destroy_setup(PFFFT_Setup *);
 }
 
 #define L2_CACHE_SIZE (16 * 1024 * 1024)
@@ -106,6 +110,7 @@ typedef struct {
   int cols;
 } TrailingZeros;
 
+// Custom deleter for PFFFT_Setup
 struct PFFFT_Deleter {
   void operator()(PFFFT_Setup *setup) const {
     if (setup) {
