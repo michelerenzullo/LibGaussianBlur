@@ -74,7 +74,7 @@ RUN bootstrap/bootstrap.sh android && rm -rf build
 
 FROM builder-env AS wasm
 # Download emsdk 3.1.66
-RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.66.zip -O /opt/emsdk.zip
+RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.74.zip -O /opt/emsdk.zip
 # Extract emsdk and create in symlink in /root (aka $HOME)
 ENV EMSDK=/opt/emsdk
 RUN unzip /opt/emsdk.zip -d /opt/ && mv /opt/emsdk-* /opt/emsdk && rm /opt/emsdk.zip && ln -s /opt/emsdk /root/emsdk

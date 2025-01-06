@@ -270,6 +270,7 @@ jobs:
         uses: ImBIOS/lcov-coverage-badge@v1.0.1
         with:
           file: output-${{ env.BUILD_TARGET }}/app/coverage/lcov.info
+          icon_name: codecov
           access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload coverage artifacts
