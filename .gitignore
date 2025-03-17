@@ -12,3 +12,4 @@ external/android
 external/ios
 .docker/
 coverage/
+**/__pycache__

@@ -1,9 +1,17 @@
 FROM debian:bookworm-slim AS base
 
+
 # Install dependencies
 RUN apt-get -qq update; \
     apt-get install -qqy --no-install-recommends gnupg2 wget ca-certificates \
-    apt-transport-https curl unzip make cmake xz-utils cppcheck
+    apt-transport-https curl unzip make cmake xz-utils cppcheck 
+
+# Install python3.11 and pybind11 for bindings
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 PIP_ROOT_USER_ACTION=ignore
+RUN apt-get install -qqy --no-install-recommends curl python3.11 python3-venv python3-dev && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 && \
+    pip install pybind11
 
 # Install LLVM
 RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
@@ -73,8 +81,8 @@ RUN bootstrap/bootstrap.sh android && rm -rf build
 
 
 FROM builder-env AS wasm
-# Download emsdk 3.1.66
-RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.74.zip -O /opt/emsdk.zip
+# Download emsdk 4.0.5
+RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/4.0.5.zip -O /opt/emsdk.zip
 # Extract emsdk and create in symlink in /root (aka $HOME)
 ENV EMSDK=/opt/emsdk
 RUN unzip /opt/emsdk.zip -d /opt/ && mv /opt/emsdk-* /opt/emsdk && rm /opt/emsdk.zip && ln -s /opt/emsdk /root/emsdk
