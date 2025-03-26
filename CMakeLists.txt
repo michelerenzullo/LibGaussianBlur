@@ -213,13 +213,30 @@ if(WITH_BINDINGS)
 
     pybind11_add_module(gaussianblur MODULE ${BINDING_SOURCES})
 
-    target_link_libraries(gaussianblur PRIVATE GaussianBlurLib)
 
+    # Set the RPATH to "./../../lib" in case is under 'external/$PLATFORM/$ABI/lib', and to "." (same directory)
+    # respect the origin location of the .so file
+    #
+    # Can also be skipped and the developer will have the duty
+    # to install the built libs into /usr/lib/ or use "export LD_LIBRARY_PATH=..."
+    # before running the python script that uses the raw binded shared library instead of the wheel.
+    if(APPLE)
+        set(RPATH "@loader_path/../../lib;@loader_path")
+        set(EXTRA_LINK_FLAGS "")
+    elseif(UNIX)
+        set(RPATH "$ORIGIN/../../lib;$ORIGIN")
+        # On Linux, we need to add --no-as-needed to the linker flags
+        # so that the linker doesn't remove the shared library if it's not used.
+        # Not our case tho, but it's a good practice.
+        set(EXTRA_LINK_FLAGS "-Wl,--no-as-needed")
+    endif()
 
-    # Set the output directory for the shared library to:
-    # <repo_root>/python/bindings/gaussianblur/
+    target_link_libraries(gaussianblur PRIVATE GaussianBlurLib ${EXTRA_LINK_FLAGS})
+
     set_target_properties(gaussianblur PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/python/gaussianblur
+        INSTALL_RPATH "${RPATH}"
+        BUILD_WITH_INSTALL_RPATH ON
     )
 
     # Optionally, add an install rule for the bindings.
@@ -234,10 +251,12 @@ if(WITH_BINDINGS)
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gaussianblur> ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/gaussianblur/__init__.py ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur/
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:GaussianBlurLib> ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/setup.py ${CMAKE_BINARY_DIR}/py_wheel/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/pyproject.toml ${CMAKE_BINARY_DIR}/py_wheel/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/LICENSE ${CMAKE_BINARY_DIR}/py_wheel/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/README.md ${CMAKE_BINARY_DIR}/py_wheel/
         COMMAND python3 -m build ${CMAKE_BINARY_DIR}/py_wheel
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/py_wheel/dist/*.whl ${CMAKE_SOURCE_DIR}/python/
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/py_wheel/dist/*.whl ${PrefixPath}/python/
     )
 endif()

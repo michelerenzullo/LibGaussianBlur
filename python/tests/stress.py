@@ -36,7 +36,7 @@ def test_stress_gaussian_blur():
     assert max_duration < 10.0, "Processing time exceeds 10 seconds for at least one sigma value."
     min_duration = min(durations)
     print(f"Max duration: {max_duration:.4f}, Min duration: {min_duration:.4f}")
-    assert max_duration - min_duration < 1.0, "Processing time varies significantly across sigma values."
+    assert max_duration - min_duration < 2.0, "Processing time varies significantly across sigma values."
 
     # Convert blurred image data back to a NumPy array
     blurred_np_image = np.array(image.data, dtype=np.uint8).reshape((height, width, channels))

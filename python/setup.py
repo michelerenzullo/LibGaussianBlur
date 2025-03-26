@@ -9,15 +9,16 @@ with open("dummy.c", "w") as f:
     f.write("""
             void init_dummy(void) {}
             """)
-dummy_extension = Extension("jie_core._dummy", sources=['dummy.c'])
+dummy_extension = Extension("gaussianblur._dummy", sources=['dummy.c'])
 
 try:
     setup(
         name='gaussianblur',
-        version='1.0.5',
+        version='1.1.1',
         packages=find_packages(),
         package_data={'gaussianblur': [
-            'gaussianblur.cpython*.so'
+            'gaussianblur.cpython*.so',
+            'libGaussianblur.*'
             ]},
         include_package_data=True,
         ext_modules=[dummy_extension],
