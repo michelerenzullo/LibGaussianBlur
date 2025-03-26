@@ -1,9 +1,17 @@
 FROM debian:bookworm-slim AS base
 
+
 # Install dependencies
 RUN apt-get -qq update; \
     apt-get install -qqy --no-install-recommends gnupg2 wget ca-certificates \
-    apt-transport-https curl unzip make cmake xz-utils cppcheck
+    apt-transport-https curl unzip make cmake xz-utils cppcheck 
+
+# Install python3.11 and pybind11 for bindings.
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 PIP_ROOT_USER_ACTION=ignore
+RUN apt-get install -qqy --no-install-recommends curl python3.11 python3-venv python3-dev && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 && \
+    pip install pybind11 pytest numpy build
 
 # Install LLVM
 RUN echo "deb https://apt.llvm.org/bookworm llvm-toolchain-bookworm-16 main" \
@@ -31,6 +39,8 @@ FROM builder-env AS linux
 # Build gaussian_blur
 RUN bootstrap/bootstrap.sh linux && rm -rf build
 RUN ln -s /app/external/linux/x86_64/bin/GaussianBlurTests /app/GaussianBlurTests
+RUN find /app/external/linux/x86_64/python/ -name "gaussianblur-*.whl" -exec ln -s {} /app/gaussianblur.whl \;
+RUN mkdir /app/python && ln -s /app/.deps/gaussian_blur/python/tests /app/python/tests
 
 FROM builder-env AS coverage
 RUN mkdir -p /app/.deps/gaussian_blur/build
@@ -73,8 +83,8 @@ RUN bootstrap/bootstrap.sh android && rm -rf build
 
 
 FROM builder-env AS wasm
-# Download emsdk 3.1.66
-RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.74.zip -O /opt/emsdk.zip
+# Download emsdk 4.0.5
+RUN wget -q https://github.com/emscripten-core/emsdk/archive/refs/tags/4.0.5.zip -O /opt/emsdk.zip
 # Extract emsdk and create in symlink in /root (aka $HOME)
 ENV EMSDK=/opt/emsdk
 RUN unzip /opt/emsdk.zip -d /opt/ && mv /opt/emsdk-* /opt/emsdk && rm /opt/emsdk.zip && ln -s /opt/emsdk /root/emsdk

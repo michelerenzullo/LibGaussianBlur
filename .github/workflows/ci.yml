@@ -196,6 +196,9 @@ jobs:
       - name: Run tests
         run: |
           docker run --rm ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:linux ./GaussianBlurTests
+      - name: Run python bindings tests
+        run: |
+          docker run --rm ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:linux sh -c "pip3 install \$(realpath gaussianblur.whl) && pytest python/tests/*.py"
 
   coverage:
     name: Generate Coverage Report

@@ -158,12 +158,12 @@ This will generate the necessary files in the `external/ios` folder.
 
 #### Manual Build
 
-##### Desktop (Linux, macOS)
+##### Desktop (Linux, macOS) with python bindings and examples
 
 ```sh
 mkdir build
 cd build
-cmake -DENABLE_MULTITHREADING=ON -DWITH_EXAMPLES=ON -DWITH_TESTS=ON -DWITH_COVERAGE=OFF ..
+cmake -DENABLE_MULTITHREADING=ON -DWITH_EXAMPLES=ON -DWITH_BINDINGS=ON -DWITH_TESTS=ON -DWITH_COVERAGE=OFF ..
 cmake --build .
 ```
 
@@ -196,9 +196,21 @@ make
 ```
 
  
-## Usage
+## Usage in Python
 
-  When building with `WITH_EXAMPLES=ON`, you can try the library. These examples are intended to provide a simple idea of how the library is used.
+  If you build the library with `WITH_BINDINGS=ON`, a Python wheel will be generated. You will find the wheel under `external/PLATFORM/ABI/python/` along with the shared library.
+
+A basic example has been provided about how to use the module.  
+First, install the wheel with pip, and then, replace with your input/output image paths:
+
+```sh
+pip3 install gaussianblur*.whl
+python3 examples/python/main.py
+```
+
+## Usage in C++
+
+  When building with `WITH_EXAMPLES=ON`, you can try the library. These examples are intended to provide a simple idea of how the library is used.  
 
 ### Command Line (desktop)
 
@@ -261,6 +273,7 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
   - Tests must pass successfully before generating the coverage report and build the Android and WASM libraries.
 
 ## Roadmap
+- Python wheel packages
 - Doxygen
 - Flutter plugin with native bindings
 

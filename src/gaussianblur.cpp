@@ -157,10 +157,12 @@ KernelDFT prepare_kernel_DFT(const ImgGeom image_geometry, const float sigma) {
   } else
     std::copy(kerf_1D_col.begin(), kerf_1D_col.end(), kerf_1D_row.begin());
 
+#ifdef TIMING
   printf("Kernel DFT prepared in %f ms\n",
          std::chrono::duration<double, std::milli>(
              std::chrono::steady_clock::now() - start_0)
              .count());
+#endif
   return {std::move(kerf_1D_row),
           std::move(kerf_1D_col),
           std::move(rows_setup),
@@ -276,10 +278,12 @@ void pffft(const ImgGeom image_geometry, const KernelDFT kernelDFT,
                           tmp, tile, work, resf, deinterleaved_channels,
                           divisor_row);
   }
+#ifdef TIMING
   printf("Convolution done in %f ms\n",
          std::chrono::duration<double, std::milli>(
              std::chrono::steady_clock::now() - start_1)
              .count());
+#endif
 }
 
 void copy_processed_data_to_image(

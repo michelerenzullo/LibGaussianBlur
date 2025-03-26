@@ -14,11 +14,16 @@ option(WITH_EXAMPLES "Include examples" OFF)
 option(WITH_TESTS "Include tests" OFF)
 # Coverage
 option(WITH_COVERAGE "Include coverage" OFF)
+# Bindings
+option(WITH_BINDINGS "Build Python bindings" OFF)
 
 if(WITH_COVERAGE AND WITH_EXAMPLES)
     message(FATAL_ERROR "Coverage can affect the performance of the examples. Pick one or the other.")
 endif()
 
+if(WITH_COVERAGE AND WITH_BINDINGS)
+    message(FATAL_ERROR "Coverage can affect the performance of the bindings. Pick one or the other.")
+endif()
 
 # If compiling to WebAssembly
 if(WASM)
@@ -56,10 +61,12 @@ endif()
 # Append additional flags for WebAssembly
 if(WASM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msimd128")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msimd128")
 endif()
 
 if(ENABLE_MULTITHREADING)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_MULTITHREADING -pthread")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 endif()
 
 # Add Framework Accelerate for macOS (SIMD)
@@ -118,15 +125,11 @@ set_target_properties(GaussianBlurLib PROPERTIES OUTPUT_NAME "Gaussianblur")
 if(WITH_EXAMPLES)
     message(STATUS "Building examples")
     if(WASM)
-        add_executable(GaussianBlur "${CMAKE_SOURCE_DIR}/examples/wasm/main.cpp")
+        add_executable(GaussianBlurExample "${CMAKE_SOURCE_DIR}/examples/wasm/main.cpp")
         set(WASM_COMMON_LINK_OPTIONS 
             "SHELL: --closure 1"
-            "-sALLOW_MEMORY_GROWTH=1"
-            "-sMAXIMUM_MEMORY=4GB"
-            "-sINITIAL_MEMORY=314572800"
             "-O3"
             "--bind"
-            "-sWASM_BIGINT"
             "-sEXPORTED_FUNCTIONS=['_malloc']"
             "-msimd128"
         )
@@ -134,22 +137,32 @@ if(WITH_EXAMPLES)
         # Append specific options based on SINGLE or ENABLE_MULTITHREADING
         if(ENABLE_MULTITHREADING)
             list(APPEND WASM_COMMON_LINK_OPTIONS 
-                "-pthread"
+                "-pthread"                 # Enable multithreading
+                "-sMALLOC=mimalloc"        # Use mimalloc
+                "-sINITIAL_MEMORY=4095mb"  # Use maximum memory and avoid memory growth
                 "-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency"
+            )
+        else()
+            list(APPEND WASM_COMMON_LINK_OPTIONS 
+                "-sINITIAL_MEMORY=300mb"
+                "-sMAXIMUM_MEMORY=4GB"
+                "-sALLOW_MEMORY_GROWTH=1"
             )
         endif()
 
         # Apply the options to the target
-        target_link_options(GaussianBlur PRIVATE ${WASM_COMMON_LINK_OPTIONS})
+        target_link_options(GaussianBlurExample PRIVATE ${WASM_COMMON_LINK_OPTIONS})
 
         # Install the WASM file
+        set_target_properties(GaussianBlurExample PROPERTIES OUTPUT_NAME "GaussianBlur")
         install(FILES "${CMAKE_BINARY_DIR}/GaussianBlur.wasm" DESTINATION bin)
     else()
-        add_executable(GaussianBlur "${CMAKE_SOURCE_DIR}/examples/desktop/main.cpp")
+        add_executable(GaussianBlurExample "${CMAKE_SOURCE_DIR}/examples/desktop/main.cpp")
+        set_target_properties(GaussianBlurExample PROPERTIES OUTPUT_NAME "GaussianBlur")
     endif()
 
-    target_link_libraries(GaussianBlur GaussianBlurLib)
-    install(TARGETS GaussianBlur
+    target_link_libraries(GaussianBlurExample GaussianBlurLib)
+    install(TARGETS GaussianBlurExample
         BUNDLE DESTINATION Applications
         RUNTIME DESTINATION bin
     )
@@ -184,4 +197,47 @@ if(WITH_TESTS)
     target_link_libraries(GaussianBlurTests GaussianBlurLib gtest_main)
     add_test(NAME GaussianBlurTests COMMAND GaussianBlurTests)
     install(TARGETS GaussianBlurTests DESTINATION bin)
+endif()
+
+
+if(WITH_BINDINGS)
+    if(WASM OR ANDROID OR IOS)
+        message(FATAL_ERROR "Python bindings are not supported for this platform")
+    endif()
+
+    message(STATUS "Building Python bindings")
+    find_package(pybind11 REQUIRED)
+
+
+    set(BINDING_SOURCES ${CMAKE_SOURCE_DIR}/python/bindings/gaussianblur_py.cpp)
+
+    pybind11_add_module(gaussianblur MODULE ${BINDING_SOURCES})
+
+    target_link_libraries(gaussianblur PRIVATE GaussianBlurLib)
+
+
+    # Set the output directory for the shared library to:
+    # <repo_root>/python/bindings/gaussianblur/
+    set_target_properties(gaussianblur PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/python/gaussianblur
+    )
+
+    # Optionally, add an install rule for the bindings.
+    install(TARGETS gaussianblur
+        LIBRARY DESTINATION python/gaussianblur
+    )
+
+    # Build the wheel (under-the-hood just copies the shared libraries in a whl package)
+    add_custom_target(build_py_wheel ALL
+        DEPENDS gaussianblur
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/py_wheel
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gaussianblur> ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/gaussianblur/__init__.py ${CMAKE_BINARY_DIR}/py_wheel/gaussianblur/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/setup.py ${CMAKE_BINARY_DIR}/py_wheel/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/python/pyproject.toml ${CMAKE_BINARY_DIR}/py_wheel/
+        COMMAND python3 -m build ${CMAKE_BINARY_DIR}/py_wheel
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/py_wheel/dist/*.whl ${CMAKE_SOURCE_DIR}/python/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/py_wheel/dist/*.whl ${PrefixPath}/python/
+    )
 endif()

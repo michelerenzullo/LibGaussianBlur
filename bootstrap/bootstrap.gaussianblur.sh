@@ -5,7 +5,7 @@
 
 PREFIX="gaussian_blur"
 TEMP_EXTERNAL_BUILD_DIR=.deps
-GAUSSIANBLUR_VERSION="1.0.4"
+GAUSSIANBLUR_VERSION="1.0.5"
 GAUSSIANBLUR_FOLDER="v${GAUSSIANBLUR_VERSION}"
 GAUSSIANBLUR_BUILD_DIR="${PREFIX}-${GAUSSIANBLUR_FOLDER}"
 
@@ -56,6 +56,7 @@ compile_gaussian_blur() {
             -DANDROID_PLATFORM=23 \
             -DANDROID_ABI=$ABI \
             -DBUILD_SHARED_LIBS=ON \
+            -DWITH_BINDINGS=OFF \
             -DWITH_TESTS=OFF \
             -DWITH_COVERAGE=OFF \
             -DANDROID_STL="c++_shared" ..
@@ -75,6 +76,9 @@ compile_gaussian_blur() {
             -DCMAKE_INSTALL_PREFIX="$TEMP_PREFIX_DIR" \
             -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
             -DBUILD_SHARED_LIBS=ON \
+            -DPYBIND11_FINDPYTHON=ON \
+            -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) \
+            -DWITH_BINDINGS=ON \
             -DWITH_TESTS=ON \
             -DWITH_COVERAGE=OFF \
             ..
@@ -91,12 +95,19 @@ compile_gaussian_blur() {
         mv ${TEMP_PREFIX_DIR}/include/gaussianblur ${FINAL_PREFIX_DIR}/include/
         mv ${TEMP_PREFIX_DIR}/lib/*.so* ${FINAL_PREFIX_DIR}/lib/
         mv ${TEMP_PREFIX_DIR}/bin/* ${FINAL_PREFIX_DIR}/bin/
+
+        # Copy Python bindings
+        if [ -d ${FINAL_PREFIX_DIR}/python/gaussianblur ] ; then rm -rf ${FINAL_PREFIX_DIR}/python/gaussianblur ; fi
+        mkdir -p ${FINAL_PREFIX_DIR}/python/gaussianblur
+        cp -R ../python/gaussianblur ${FINAL_PREFIX_DIR}/python/
+        cp ../python/gaussianblur*.whl ${FINAL_PREFIX_DIR}/python/
     elif [ "$PLATFORM" = "wasm" ] ; then
         cmake -DENABLE_MULTITHREADING=ON \
             -DCMAKE_INSTALL_PREFIX="$TEMP_PREFIX_DIR" \
             -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
             -DBUILD_SHARED_LIBS=OFF \
             -DWASM=ON \
+            -DWITH_BINDINGS=OFF \
             -DWITH_EXAMPLES=ON \
             -DWITH_TESTS=OFF \
             -DWITH_COVERAGE=OFF \
@@ -161,6 +172,7 @@ compile_gaussian_blur() {
             -DCMAKE_TOOLCHAIN_FILE="$IOS_TOOLCHAIN" \
             -DENABLE_MULTITHREADING=ON \
             -DWITH_EXAMPLES=OFF \
+            -DWITH_BINDINGS=OFF \
             -DWITH_TESTS=OFF \
             -DWITH_COVERAGE=OFF \
             -DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
@@ -192,14 +204,17 @@ compile_gaussian_blur() {
             && ln -s "Versions/Current/Resources" "Resources" \
             && ln -s "Versions/Current/Gaussianblur" "Gaussianblur")
     elif [ "$PLATFORM" = "macos" ] && [ "$ABI" = "x86_64" ] ; then
-        # MacOS arm64
+        # MacOS x86_64
         cmake -DENABLE_MULTITHREADING=ON \
             -DWITH_EXAMPLES=ON \
             -DCMAKE_INSTALL_PREFIX=${TEMP_PREFIX_DIR} \
             -DCMAKE_INSTALL_RPATH=$FINAL_PREFIX_DIR/lib \
             -DBUILD_SHARED_LIBS=ON \
+            -DPYBIND11_FINDPYTHON=ON \
+            -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) \
             -DWITH_TESTS=ON \
             -DWITH_COVERAGE=OFF \
+            -DWITH_BINDINGS=ON \
             -DCMAKE_OSX_ARCHITECTURES="$ABI" \
             ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
@@ -214,6 +229,12 @@ compile_gaussian_blur() {
         mv ${TEMP_PREFIX_DIR}/include/gaussianblur ${FINAL_PREFIX_DIR}/include/
         mv ${TEMP_PREFIX_DIR}/lib/*.dylib ${FINAL_PREFIX_DIR}/lib/
         mv ${TEMP_PREFIX_DIR}/bin/* ${FINAL_PREFIX_DIR}/bin/
+
+        # Copy Python bindings
+        if [ -d ${FINAL_PREFIX_DIR}/python/gaussianblur ] ; then rm -rf ${FINAL_PREFIX_DIR}/python/gaussianblur ; fi
+        mkdir -p ${FINAL_PREFIX_DIR}/python/gaussianblur
+        cp -R ../python/gaussianblur ${FINAL_PREFIX_DIR}/python/
+        cp ../python/gaussianblur*.whl ${FINAL_PREFIX_DIR}/python/
     else
         # MacOS arm64
         cmake -DENABLE_MULTITHREADING=ON \
@@ -223,6 +244,9 @@ compile_gaussian_blur() {
             -DBUILD_SHARED_LIBS=ON \
             -DWITH_TESTS=ON \
             -DWITH_COVERAGE=OFF \
+            -DPYBIND11_FINDPYTHON=ON \
+            -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) \
+            -DWITH_BINDINGS=ON \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             ..
         printf "${GREEN}Compiling with ${N_CPU_CORES} cores. This might still take some time\n"
@@ -237,6 +261,12 @@ compile_gaussian_blur() {
         mv ${TEMP_PREFIX_DIR}/include/gaussianblur ${FINAL_PREFIX_DIR}/include/
         mv ${TEMP_PREFIX_DIR}/lib/*.dylib ${FINAL_PREFIX_DIR}/lib/
         mv ${TEMP_PREFIX_DIR}/bin/* ${FINAL_PREFIX_DIR}/bin/
+
+        # Copy Python bindings
+        if [ -d ${FINAL_PREFIX_DIR}/python/gaussianblur ] ; then rm -rf ${FINAL_PREFIX_DIR}/python/gaussianblur ; fi
+        mkdir -p ${FINAL_PREFIX_DIR}/python/gaussianblur
+        cp -R ../python/gaussianblur ${FINAL_PREFIX_DIR}/python/
+        cp ../python/gaussianblur*.whl ${FINAL_PREFIX_DIR}/python/
     fi
 }
 
