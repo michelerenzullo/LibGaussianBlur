@@ -13,7 +13,7 @@ int gaussian_window(const float sigma, const int max_width = 0) {
   // return an odd width for the kernel, if max is passed check that is not
   // bigger than it
 
-  const float radius = sigma * sqrt(2 * log(255)) - 1;
+  const float radius = std::max(sigma * sqrt(2 * log(255)) - 1, 0.0);
   int width = radius * 2 + 0.5F;
   if (max_width) width = std::min(width, max_width);
 

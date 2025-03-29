@@ -5,9 +5,24 @@
 ![coverage](https://raw.githubusercontent.com/michelerenzullo/LibGaussianBlur/refs/heads/main/coverage.svg)
 ![license](https://img.shields.io/github/license/michelerenzullo/libgaussianblur)  
 
-LibGaussianBlur is a C++ library designed to apply Gaussian blur to images using the Fast Fourier Transform (FFT). It features optimizations for parallel tile processing and leverages the property that a centered kernel has an imaginary part of zero. The library supports multiple platforms, including Android, iOS, WebAssembly (Emscripten), macOS, and Linux, and provides examples for both desktop and web environments. This project is a refined version of [Blur_algorithms](https://github.com/michelerenzullo/Blur_algorithms).
-
-The primary objective of LibGaussianBlur is to offer a portable, lightweight, and efficient solution for applying true Gaussian blur to large images. It is intended for academic purposes and can be extended for video processing, as the kernel data can be stored and applied to frames.
+<div style="display: flex; justify-content: space-between; align-items: flex-start;">
+  <div style="flex: 1; padding: 10px;">
+    <p>
+      LibGaussianBlur is a C++ library designed to apply Gaussian blur to images using the Fast Fourier Transform (FFT). It features optimizations for parallel tile processing and leverages the property that a centered kernel has an imaginary part of zero. The library supports multiple platforms, including Android, iOS, WebAssembly (Emscripten), macOS, and Linux, and provides examples for both desktop and web environments. This project is a refined version of <a href="https://github.com/michelerenzullo/Blur_algorithms">Blur_algorithms</a>.
+    </p>
+    <p>
+      The primary objective of LibGaussianBlur is to offer a portable, lightweight, and efficient solution for applying true Gaussian blur to large images. It is intended for academic purposes and can be extended for video processing, as the kernel data can be stored and applied to frames.
+    </p>
+    <p>
+      <a href="https://drive.google.com/file/d/1oOfESYmw9p_q-ulh06jr4ksiex97Otxj/view?usp=share_link" target="_blank"> ▶️ Watch Gaussian Blur demo</a> or try it <a href="http://dustfreesolutions.com/multi-threaded/gaussianblur.html">here</a>
+    </p>
+  </div>
+  <div style="flex: 1; padding: 10px;">
+    <a href="https://github.com/michelerenzullo/Blur_algorithms/blob/2f873a4ec9a9608724fd6fa9e6311f3e2c620d31/test_images/spectrum_analysis/animation.gif">
+      <img src="https://github.com/michelerenzullo/Blur_algorithms/blob/master/test_images/spectrum_analysis/animation.gif?raw=true" height="550px" width="275px" alt="Gaussian Blur Animation">
+    </a>
+  </div>
+</div>
 
 ## Key Concepts
 
@@ -109,6 +124,7 @@ Shifting and centering
 - Emscripten (for WebAssembly support)
 - Android NDK (for Android support)
 - Xcode (for iOS and macOS support)
+- Python and pybind11 (for python bindings)
 
 
 ## Installation
@@ -243,6 +259,8 @@ If compiled with `WITH_TESTS=ON` (GoogleTest), you can run the tests using:
 
 ### WebAssembly
 
+<p><a href="https://drive.google.com/file/d/1oOfESYmw9p_q-ulh06jr4ksiex97Otxj/view?usp=share_link" target="_blank"> ▶️ Watch Gaussian Blur WASM Demo</a> or try it <a href="http://dustfreesolutions.com/multi-threaded/gaussianblur.html">here</a></p>
+
 The WebAssembly version is compiled by default with multi-threading using web workers and SIMD instructions (required by the pffft library). A script is provided to run a local web server with lighttpd, which also sets up the necessary CORS and COEP headers (required when using SharedArrayBuffers):
 
 ```sh
@@ -264,7 +282,7 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
 
 ### Multi-Platform Build
 - The CI/CD pipeline supports automated builds for multiple platforms:
-- Linux
+- Linux + Python wheel
 - Android
 - WebAssembly (WASM)
 
@@ -287,8 +305,8 @@ LibGaussianBlur implements a robust Continuous Integration and Continuous Deploy
   - Tests must pass successfully before generating the coverage report and build the Android and WASM libraries.
 
 ## Roadmap
-- Doxygen
-- Flutter plugin with native bindings
+- MacOS pipeline
+- Windows pipeline
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.

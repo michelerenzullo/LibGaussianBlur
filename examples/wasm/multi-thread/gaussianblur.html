@@ -75,16 +75,6 @@
 <body>
   <h3>WebAssembly example of libGaussianBlur - Michele Renzullo</h3>
   <br>
-  <label for="samples">Samples: </label>
-  <select name="samples" id="samples">
-    <option></option>
-    <option value="0">dog</option>
-    <option value="1">building</option>
-    <option value="2">guy</option>
-    <option value="3">house</option>
-    <option value="4">castle</option>
-    <option value="5">tree</option>
-  </select>
 
   <input type="file" id="input_file" hidden />
   <div>
@@ -99,23 +89,17 @@
   <input type="button" id='convert' value="run" />
   <input type="button" id="save_file" value="save file" hidden />
   <br>
-  <input type="range" id="sigma_slider" min="0" max="100" value="5" step="0.1">
+  <input type="range" id="sigma_slider" min="0" max="100" value="5" step="0.1" style="width: 280px;margin: 15px">
   <input type="button" id="help_btn" value="help" />
   <div class="spinner" id='spinner' hidden></div>
   <div>
     <p>
       <br>
       Features:<br>
-      - Thumbnail extraction<br>
-      - Thumbnail jpeg preview<br>
-      - Exif<br>
-      - Worker thread<br>
-      - Added ACEScg, ACEScc, ACEScct<br>
-      - For ACES color space - EXR file output like <a href="https://github.com/AcademySoftwareFoundation/rawtoaces">rawtoaces</a><br>
-      - Fast I/O Buffer from/to JS/WASM<br>
-      - Jpeg preview for tiff output - turbojpeg C++<br>
-      - Thread safe<br>
-      - Easy JS&lt--&gtC++ memory management: internally managed inside C++<br>
+      - Fast Fourier Transform<br>
+      - Parallel processing for tiles<br>
+      - Smooth edge handling with reflection padding<br>
+      - Repository <a href="https://github.com/michelerenzullo/LibGaussianBlur">libGaussianBlur</a>
     </p>
   </div>
   <br>
@@ -144,40 +128,6 @@
   }})();
   const myworker = new Worker("gaussianblur_worker.js")
   const $ = id => document.getElementById(id)
-
-  const set_images = async () => {
-
-    let link_sample = "images/"
-    switch (samples.value | 0) {
-      case 0:
-        link_sample += "DSC09749.ARW"
-        break
-      case 1:
-        link_sample += "IMG_4340.ARW"
-        break
-      case 2:
-        link_sample += "IMG_4340.CR2"
-        break
-      case 3:
-        link_sample += "IMG_434.CR2"
-        break
-      case 4:
-        link_sample += "RAW_SONY_A330.ARW"
-        break
-      case 5:
-        link_sample += "SDIM0346.DNG"
-        break
-    }
-
-    const response = await fetch(link_sample)
-    const data = await response.blob()
-    const file = new File([data], link_sample.substr(10))
-    const list = new DataTransfer()
-    list.items.add(file)
-    input_file.files = list.files
-    //execute()
-  }
-
 
   const canvas_text = txt => {
     output_.getContext("2d").clearRect(0, 0, output_.width, output_.height)
@@ -241,9 +191,6 @@
         case "png":
           renderImage(result.file_output, "image/png");
           break
-        case "tiff":
-          renderImage(result.preview);
-          break
         default:
           exif.innerHTML = ""
           canvas_text("Input isn't a valid raw file, retry")
@@ -302,7 +249,7 @@
   const renderImage = async (data, mimeType = "image/jpeg") => {
     const img = await loadImage(URL.createObjectURL(new Blob([data], { type: mimeType })));
 
-    let scale = Math.min(1200 / img.width, 1200 / img.height);
+    let scale = Math.min(500 / img.width, 500 / img.height);
     if (scale > 1) scale = 1;
     preview.src = img.src;
     preview.width = Math.round(img.width * scale);
@@ -335,7 +282,6 @@
   output_.addEventListener('click', () => input_file.click(), true)
   preview.addEventListener('click', () => input_file.click(), true)
   convert.addEventListener('click', () => execute(), true)
-  samples.addEventListener('change', () => set_images(), true)
   save_file.addEventListener('click', () => save(), true)
   help_btn.addEventListener('click', () => help.hidden = !help.hidden, true)
   sigma_slider.addEventListener('input', () => updateSigmaAndRun(), true)

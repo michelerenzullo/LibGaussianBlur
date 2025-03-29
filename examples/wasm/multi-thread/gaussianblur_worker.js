@@ -38,24 +38,4 @@ onmessage = async e => {
 	//postMessage([result])
 }
 
-
-// Alternative: Compile with -sMODULARIZE and -sEXPORT_NAME=WebLibraw
-// The instance will be created just when receiving input data, therefore
-// the pool of WebWorkers will be spawned and terminated at every lib call,
-// further, this simplify the assignation of Module as minified named due 
-// to closure compile. This behaviour might be not desired when we want
-// always ready our pool of WebWorkers, up to you.
-/* onmessage = e => {
-	const Module = {
-		locateFile: (file) => file,
-		onRuntimeInitialized: () => {
-			// ... as above ...
-			// postMessage([...])
-		},
-		mainScriptUrlOrBlob: "weblibraw.js",
-	};
-	WebLibraw(Module)
-} */
-
-
 importScripts('GaussianBlur.js')

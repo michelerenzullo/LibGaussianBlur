@@ -66,17 +66,10 @@ std::optional<std::vector<uint8_t>> read_image(
 
 em_val run(uintptr_t args_ptr, uintptr_t target_ptr, size_t target_size) {
 #ifdef __EMSCRIPTEN_PTHREADS__
-  printf("Multi-Threaded WebLibraw, threads available: %d\n",
+  printf("Multi-Threaded LibGaussianBlur, threads available: %d\n",
          (int)std::thread::hardware_concurrency());
-
-  // Parallel test
-  // hybrid_loop(8, [](int i){
-  //  std::ostringstream oss;
-  //  oss << std::this_thread::get_id();
-  //  printf("int i %d, tid: %s\n", i, oss.str().c_str());}
-  //);
 #else
-  printf("Single-Threaded WebLibraw\n");
+  printf("Single-Threaded LibGaussianBlur\n");
 #endif
 
   auto args_ = std::unique_ptr<char[], free_delete>((char*)args_ptr);
@@ -94,7 +87,6 @@ em_val run(uintptr_t args_ptr, uintptr_t target_ptr, size_t target_size) {
   // treat the char arguments array as a string
   std::string args(args_.get());
 
-  // parse options, similar to LibRaw code
   const char* delimiter = "-";
   args.append(delimiter);  // add final "-" in order to read the last argument
                            // inside the for loop
