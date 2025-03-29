@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gaussianblur"
-version = "1.1.1"
+version = "1.1.2"
 authors = [
   { name="Michele Renzullo", email="renzullo@pm.me" },
 ]

@@ -172,6 +172,32 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/libgaussianblur:${{ env.BUILD_TARGET }}
 
+      - name: Pull manylinux image if not cached
+        run: |
+          if [ -f ".docker/.cache-${{ env.BUILD_TARGET }}/manylinux_2_34_x86_64.tar" ]; then
+            echo "Loading manylinux image from cache..."
+            docker load < .docker/.cache-${{ env.BUILD_TARGET }}/manylinux_2_34_x86_64.tar
+          else
+            echo "Pulling manylinux image..."
+            docker pull quay.io/pypa/manylinux_2_34_x86_64
+            echo "Saving manylinux image to cache..."
+            mkdir -p .docker/.cache-${{ env.BUILD_TARGET }}
+            docker save quay.io/pypa/manylinux_2_34_x86_64 > .docker/.cache-${{ env.BUILD_TARGET }}/manylinux_2_34_x86_64.tar
+          fi
+    
+      - name: Repair Python wheels with auditwheel
+        run: |
+          docker run --rm \
+            -v "$(pwd)/output-${{ env.BUILD_TARGET }}/app/external/${{ env.BUILD_TARGET }}/x86_64/python:/io" \
+            quay.io/pypa/manylinux_2_34_x86_64 \
+            bash -c "set -e; \
+              auditwheel repair /io/*.whl; \
+              repaired_wheel=\$(ls /wheelhouse/*.whl); \
+              echo \"Found repaired wheel: \$repaired_wheel\"; \
+              cp \$repaired_wheel /io/\$(basename \$repaired_wheel); \
+              chown -R $(id -u):$(id -g) /io/\$(basename \$repaired_wheel); \
+              echo \"Wheel copied as: /io/\$(basename \$repaired_wheel)\""
+
       - name: Save docker linux if cache miss
         if: steps.cache-docker-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4

@@ -198,15 +198,29 @@ make
  
 ## Usage in Python
 
-  If you build the library with `WITH_BINDINGS=ON`, a Python wheel will be generated. You will find the wheel under `external/PLATFORM/ABI/python/` along with the shared library.
+  If you build the library with `WITH_BINDINGS=ON`, a Python wheel will be generated. You will find the wheel under `external/PLATFORM/ABI/python/` along with the shared library.  
+
+  Alternatively, you can install the library directly from [PyPI](https://pypi.org/project/gaussianblur/):
+
+```sh
+pip install gaussianblur
+```
+
 
 A basic example has been provided about how to use the module.  
 First, install the wheel with pip, and then, replace with your input/output image paths:
 
 ```sh
-pip3 install gaussianblur*.whl
+pip install gaussianblur*.whl
 python3 examples/python/main.py
 ```
+
+Note: In the GitHub CI/CD pipeline, the Python wheel is audited by pulling the [manylinux](https://github.com/pypa/manylinux) Docker image and running [auditwheel](https://github.com/pypa/auditwheel). This ensures that all required system shared libraries are bundled within the wheel, meeting the latest PyPI requirements for cross-distribution compatibility on Linux.
+At present, this auditing process is implemented **only** for Linux, as it is the primary platform where bindings are built in the CI/CD pipeline.
+
+If you wish to perform this process locally on macOS, you can use [delocate](https://github.com/matthew-brett/delocate) to audit and repair the wheel.
+
+In the future, I may also consider integrating [cibuildwheel](https://github.com/pypa/cibuildwheel) into the pipeline to streamline the process across multiple platforms, but this is currently a secondary priority.
 
 ## Usage in C++
 

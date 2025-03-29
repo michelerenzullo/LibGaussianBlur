@@ -14,7 +14,7 @@ dummy_extension = Extension("gaussianblur._dummy", sources=['dummy.c'])
 try:
     setup(
         name='gaussianblur',
-        version='1.1.1',
+        version='1.1.2',
         packages=find_packages(),
         package_data={'gaussianblur': [
             'gaussianblur.cpython*.so',
